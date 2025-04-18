@@ -1,0 +1,8 @@
+node_modules
+.keystone/admin
+keystone.db
+*.log
+config/.env.dev
+.DS_Store
+public/images
+.qodo

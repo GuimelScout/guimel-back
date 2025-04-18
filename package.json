@@ -1,0 +1,24 @@
+{
+  "name": "keystone-app",
+  "version": "1.0.3",
+  "private": true,
+  "scripts": {
+    "dev": "keystone dev",
+    "start": "keystone start",
+    "build": "keystone build",
+    "migrate": "keystone prisma migrate dev",
+    "migration:status": "keystone prisma migrate status",
+    "db:seed": "IS_BUILDING=true tsx seed.ts"
+  },
+  "dependencies": {
+    "@graphql-tools/schema": "^10.0.23",
+    "@keystone-6/auth": "^8.0.0",
+    "@keystone-6/core": "^6.0.0",
+    "@keystone-6/fields-document": "^9.0.0",
+    "dotenv": "^16.4.7",
+    "slate-dom": "^0.111.0",
+    "stripe": "^18.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.0"
+  }
+}
