@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "keystone dev",
-    "start": "keystone start",
+    "start": "keystone prisma migrate deploy && keystone start",
     "build": "keystone build",
     "migrate": "keystone prisma migrate dev",
     "migration:status": "keystone prisma migrate status",
