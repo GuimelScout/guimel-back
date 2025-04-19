@@ -47,7 +47,7 @@ const { withAuth } = createAuth({
   // WARNING: remove initFirstItem functionality in production
   //   see https://keystonejs.com/docs/config/auth#init-first-item for more
   initFirstItem: {
-    fields: ["name", "email", "password", "role"],
+    fields: ["name", "lastName", "email", "password", "role"],
   },
 });
 
