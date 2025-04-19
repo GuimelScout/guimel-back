@@ -25,12 +25,11 @@ if (process.env.NODE_ENV !== "test" && !process.env.IS_BUILDING) {
     throw new Error("Allow Origins are not set");
   }
 }
-
 export default withAuth(
   config({
     db: {
       provider: "postgresql",
-      url: `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}?connect_timeout=300`,
+      url: `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}?connect_timeout=300`,
     },
     server: {
       cors: true,
