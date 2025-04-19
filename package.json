@@ -15,10 +15,12 @@
     "@keystone-6/auth": "^8.0.0",
     "@keystone-6/core": "^6.0.0",
     "@keystone-6/fields-document": "^9.0.0",
+    "@sendgrid/mail": "^8.1.5",
     "dotenv": "^16.4.7",
     "slate-dom": "^0.111.0",
     "stripe": "^18.0.0",
     "tsx": "^4.19.2",
+    "twilio": "^5.5.2",
     "typescript": "^5.5.0"
   }
 }

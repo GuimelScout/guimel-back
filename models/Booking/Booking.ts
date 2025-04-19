@@ -8,9 +8,11 @@ import {
   select,
 } from "@keystone-6/core/fields";
 import access from "../../utils/generalAccess/access";
+import { bookingHooks } from "./Booking.hooks";
 
 export default list({
   access,
+  hooks: bookingHooks,
   fields: {
     start_date: calendarDay(),
     end_date: calendarDay(),

@@ -1,7 +1,9 @@
 "use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -15,6 +17,14 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // keystone.ts
@@ -188,10 +198,10 @@ var phoneHooks = {
   validateInput: async ({ resolvedData, addValidationError }) => {
     const { phone } = resolvedData;
     if (phone) {
-      const pattern = /\+?\d{10,}(?:-?\d+)*$/;
-      if (!pattern.test(phone) || phone.length < 10 && phone.length !== 0) {
+      const pattern = /^\+\d{10,}$/;
+      if (!pattern.test(phone)) {
         addValidationError(
-          "El tel\xE9fono debe ser de 10 d\xEDgitos y puros n\xFAmeros"
+          "El tel\xE9fono debe tener el formato internacional: +52XXXXXXXXXX (solo d\xEDgitos, sin espacios ni guiones)"
         );
       }
     }
@@ -676,8 +686,85 @@ var ActivityAvailableDay_default = (0, import_core8.list)({
 // models/Booking/Booking.ts
 var import_core9 = require("@keystone-6/core");
 var import_fields9 = require("@keystone-6/core/fields");
+
+// utils/notification.ts
+var import_mail = __toESM(require("@sendgrid/mail"));
+var import_twilio = __toESM(require("twilio"));
+import_mail.default.setApiKey(process.env.SENDGRID_API_KEY);
+var twilioClient = (0, import_twilio.default)(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+async function sendConfirmationEmail(booking) {
+  const msg = {
+    to: booking.user.email,
+    from: process.env.SENDGRID_FROM_EMAIL,
+    subject: "Confirmaci\xF3n de tu reserva",
+    html: `
+      <p>Hola ${booking.user.name} ${booking.user.lastName},</p>
+      <p>Tu reserva para la actividad ha sido confirmada para el d\xEDa ${new Date(booking.start_date).toLocaleDateString()}.</p>
+      <p>\xA1Gracias por reservar con nosotros!</p>
+    `
+  };
+  try {
+    await import_mail.default.send(msg);
+    console.log("Correo enviado con \xE9xito");
+  } catch (error) {
+    console.error("Error al enviar correo:", error);
+  }
+}
+async function sendConfirmationSMS(booking) {
+  try {
+    await twilioClient.messages.create({
+      body: `Hola ${booking.user.name} ${booking.user.lastName}, tu reserva est\xE1 confirmada para el ${new Date(booking.start_date).toLocaleDateString()}.`,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: booking.user.phone
+    });
+    console.log("SMS enviado con \xE9xito");
+  } catch (error) {
+    console.error("Error al enviar SMS:", error);
+  }
+}
+
+// models/Booking/Booking.hooks.ts
+var bookingHooks = {
+  afterOperation: async ({ operation, item, context }) => {
+    if (operation === "create") {
+      console.log("item");
+      console.log(item);
+      const [user, activity] = await Promise.all([
+        context.db.User.findOne({
+          where: { id: item.userId },
+          query: "id name lastName email phone"
+        }),
+        context.db.Activity.findOne({
+          where: { id: item.activityId },
+          query: "id name"
+        })
+      ]);
+      let lodging;
+      if (item.lodgingId) {
+        lodging = context.db.Lodging.findOne({
+          where: { id: item.lodgingId },
+          query: "id name"
+        });
+      }
+      const bookingInfo = {
+        ...item,
+        user,
+        activity,
+        lodging
+      };
+      await sendConfirmationEmail(bookingInfo);
+      await sendConfirmationSMS(bookingInfo);
+    }
+  }
+};
+
+// models/Booking/Booking.ts
 var Booking_default = (0, import_core9.list)({
   access: access_default,
+  hooks: bookingHooks,
   fields: {
     start_date: (0, import_fields9.calendarDay)(),
     end_date: (0, import_fields9.calendarDay)(),
@@ -1355,8 +1442,10 @@ var resolver = {
         }
       };
     } catch (e) {
+      console.log("e");
+      console.log(e);
       return {
-        message: "Error",
+        message: "Tuvimos problemas de comunicaci\xF3n con el servidor. Por favor intentelo de nuevo.",
         success: false
       };
     }
@@ -1580,7 +1669,7 @@ var keystone_default = withAuth(
   (0, import_core19.config)({
     db: {
       provider: "postgresql",
-      url: `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.POSTGRES_DB}?connect_timeout=300`
+      url: `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.DB_PORT}/${process.env.POSTGRES_DB}?connect_timeout=300`
     },
     server: {
       cors: true,
@@ -1590,7 +1679,7 @@ var keystone_default = withAuth(
       local_images: {
         kind: "local",
         type: "image",
-        generateUrl: (path3) => `http://${process.env.DB_HOST}:3001/images${path3}`,
+        generateUrl: (path3) => `http://${process.env.PGHOST}:3001/images${path3}`,
         serverRoute: {
           path: "/images"
         },

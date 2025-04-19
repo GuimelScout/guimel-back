@@ -30,7 +30,7 @@ export default withAuth(
   config({
     db: {
       provider: "postgresql",
-      url: `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.POSTGRES_DB}?connect_timeout=300`,
+      url: `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}?connect_timeout=300`,
     },
     server: {
       cors: true,
@@ -41,7 +41,7 @@ export default withAuth(
         kind: "local",
         type: "image",
         generateUrl: (path) =>
-          `http://${process.env.DB_HOST}:3001/images${path}`,
+          `http://${process.env.PGHOST}:3001/images${path}`,
         serverRoute: {
           path: "/images",
         },

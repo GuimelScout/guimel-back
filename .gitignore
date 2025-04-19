@@ -6,3 +6,5 @@ config/.env.dev
 .DS_Store
 public/images
 .qodo
+.keystone/config.js.map
+.keystone/config.js

@@ -234,8 +234,10 @@ const resolver = {
       };
 
     } catch (e) {
+      console.log("e");
+      console.log(e);
       return {
-        message: "Error",
+        message: "Tuvimos problemas de comunicación con el servidor. Por favor intentelo de nuevo.",
         success: false,
       };
     }
