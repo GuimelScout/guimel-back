@@ -25,9 +25,7 @@ if (process.env.NODE_ENV !== "test" && !process.env.IS_BUILDING) {
     throw new Error("Allow Origins are not set");
   }
 }
-console.log(
-  `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}`
-);
+
 export default withAuth(
   config({
     db: {
@@ -52,6 +50,7 @@ export default withAuth(
     },
     graphql:{
       extendGraphqlSchema,
+      path: '/api/graphql',
     },
     lists,
     session,

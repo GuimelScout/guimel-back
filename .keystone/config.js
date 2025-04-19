@@ -1665,9 +1665,6 @@ if (process.env.NODE_ENV !== "test" && !process.env.IS_BUILDING) {
     throw new Error("Allow Origins are not set");
   }
 }
-console.log(
-  `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}`
-);
 var keystone_default = withAuth(
   (0, import_core19.config)({
     db: {
@@ -1690,7 +1687,8 @@ var keystone_default = withAuth(
       }
     },
     graphql: {
-      extendGraphqlSchema
+      extendGraphqlSchema,
+      path: "/api/graphql"
     },
     lists: schema_default,
     session
