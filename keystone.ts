@@ -25,6 +25,9 @@ if (process.env.NODE_ENV !== "test" && !process.env.IS_BUILDING) {
     throw new Error("Allow Origins are not set");
   }
 }
+console.log(
+  `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}?connect_timeout=300`
+);
 export default withAuth(
   config({
     db: {
