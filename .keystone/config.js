@@ -1665,11 +1665,14 @@ if (process.env.NODE_ENV !== "test" && !process.env.IS_BUILDING) {
     throw new Error("Allow Origins are not set");
   }
 }
+console.log(
+  `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}`
+);
 var keystone_default = withAuth(
   (0, import_core19.config)({
     db: {
       provider: "postgresql",
-      url: `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.DB_PORT}/${process.env.POSTGRES_DB}?connect_timeout=300`
+      url: `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}`
     },
     server: {
       cors: true,
