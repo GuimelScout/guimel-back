@@ -4,18 +4,17 @@ import { Role } from "../Role/constants";
 
 export const phoneHooks = {
   validateInput: async ({ resolvedData, addValidationError }: any) => {
-    const { phone } = resolvedData;
+    let { phone } = resolvedData;
 
     if (phone) {
-      const pattern = /^\+\d{10,}$/;
-  
+      const pattern = /^\d{10}$/;
+    
       if (!pattern.test(phone)) {
         addValidationError(
-          "El teléfono debe tener el formato internacional: +52XXXXXXXXXX (solo dígitos, sin espacios ni guiones)"
+          "El teléfono debe tener exactamente 10 dígitos, sin espacios ni símbolos"
         );
       }
     }
-  
     return phone;
   },
 };
@@ -68,7 +67,7 @@ export const hooksUser = {
     if (operation === 'create') {
       if (!resolvedData.role || resolvedData.role.length === 0) {
         const defaultRole = await context.db.Role.findOne({
-          where: { id: "cm9i4wp3q0002jbciibd00fzu" },
+          where: { name: "user" },
         });
   
         if (defaultRole) {

@@ -34,7 +34,7 @@ export async function sendConfirmationSMS(booking: any) {
     await twilioClient.messages.create({
       body: `Hola ${booking.user.name} ${booking.user.lastName}, tu reserva está confirmada para el ${new Date(booking.start_date).toLocaleDateString()}.`,
       from: process.env.TWILIO_PHONE_NUMBER,
-      to: booking.user.phone,
+      to: `${booking.user.countryCode}${booking.user.phone}`,
     });
     console.log('SMS enviado con éxito');
   } catch (error) {

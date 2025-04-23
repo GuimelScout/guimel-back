@@ -49,8 +49,7 @@ export default withAuth(
       },
     },
     graphql:{
-      extendGraphqlSchema,
-      path: '/api/graphql',
+      extendGraphqlSchema
     },
     lists,
     session,

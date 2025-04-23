@@ -1654,6 +1654,7 @@ type Role {
 
 input RoleWhereUniqueInput {
   id: ID
+  name: String
 }
 
 input RoleWhereInput {
@@ -1696,6 +1697,7 @@ type User {
   secondLastName: String
   email: String
   password: PasswordState
+  countryCode: String
   phone: String
   description: String
   instagram: String
@@ -1747,6 +1749,7 @@ input UserWhereInput {
   lastName: StringFilter
   secondLastName: StringFilter
   email: StringFilter
+  countryCode: StringFilter
   phone: StringFilter
   description: StringFilter
   instagram: StringFilter
@@ -1789,6 +1792,7 @@ input UserOrderByInput {
   lastName: OrderDirection
   secondLastName: OrderDirection
   email: OrderDirection
+  countryCode: OrderDirection
   phone: OrderDirection
   description: OrderDirection
   instagram: OrderDirection
@@ -1805,6 +1809,7 @@ input UserUpdateInput {
   secondLastName: String
   email: String
   password: String
+  countryCode: String
   phone: String
   description: String
   instagram: String
@@ -1848,6 +1853,7 @@ input UserCreateInput {
   secondLastName: String
   email: String
   password: String
+  countryCode: String
   phone: String
   description: String
   instagram: String

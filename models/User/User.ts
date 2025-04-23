@@ -28,6 +28,7 @@ export default list({
     password: password({
       validation: { isRequired: true },
     }),
+    countryCode: text(),
     phone: text({
       hooks: phoneHooks,
     }),

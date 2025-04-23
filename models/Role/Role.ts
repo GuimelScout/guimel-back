@@ -8,6 +8,7 @@ export default list({
   fields: {
     name: select({
       options: role_options,
+      isIndexed: 'unique',
       validation: { isRequired: true },
     }),
     user: relationship({

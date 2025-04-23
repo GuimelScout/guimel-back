@@ -4,12 +4,10 @@ import { sendConfirmationEmail, sendConfirmationSMS } from "../../utils/notifica
 export const bookingHooks = {
     afterOperation: async ({ operation, item, context }: any) => {
       if (operation === 'create') {
-        console.log("item");
-        console.log(item);
         const [user, activity] = await Promise.all([
           context.db.User.findOne({
             where: { id: item.userId },
-            query: 'id name lastName email phone',
+            query: 'id name lastName email phone countryCode',
           }),
           context.db.Activity.findOne({
             where: { id: item.activityId },

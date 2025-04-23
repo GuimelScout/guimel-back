@@ -273,7 +273,7 @@ model Review {
 
 model Role {
   id        String    @id @default(cuid())
-  name      String
+  name      String    @unique
   user      User[]    @relation("Role_user")
   createdAt DateTime? @default(now())
 }
@@ -285,6 +285,7 @@ model User {
   secondLastName   String          @default("")
   email            String          @unique @default("")
   password         String
+  countryCode      String          @default("")
   phone            String          @default("")
   description      String          @default("")
   instagram        String          @default("")

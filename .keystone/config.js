@@ -196,12 +196,12 @@ var stripe_default = Stripe;
 // models/User/User.hooks.ts
 var phoneHooks = {
   validateInput: async ({ resolvedData, addValidationError }) => {
-    const { phone } = resolvedData;
+    let { phone } = resolvedData;
     if (phone) {
-      const pattern = /^\+\d{10,}$/;
+      const pattern = /^\d{10}$/;
       if (!pattern.test(phone)) {
         addValidationError(
-          "El tel\xE9fono debe tener el formato internacional: +52XXXXXXXXXX (solo d\xEDgitos, sin espacios ni guiones)"
+          "El tel\xE9fono debe tener exactamente 10 d\xEDgitos, sin espacios ni s\xEDmbolos"
         );
       }
     }
@@ -246,7 +246,7 @@ var hooksUser = {
     if (operation === "create") {
       if (!resolvedData.role || resolvedData.role.length === 0) {
         const defaultRole = await context.db.Role.findOne({
-          where: { id: "cm9i4wp3q0002jbciibd00fzu" }
+          where: { name: "user" }
         });
         if (defaultRole) {
           resolvedData.role = {
@@ -311,6 +311,7 @@ var User_default = (0, import_core2.list)({
     password: (0, import_fields2.password)({
       validation: { isRequired: true }
     }),
+    countryCode: (0, import_fields2.text)(),
     phone: (0, import_fields2.text)({
       hooks: phoneHooks
     }),
@@ -718,7 +719,7 @@ async function sendConfirmationSMS(booking) {
     await twilioClient.messages.create({
       body: `Hola ${booking.user.name} ${booking.user.lastName}, tu reserva est\xE1 confirmada para el ${new Date(booking.start_date).toLocaleDateString()}.`,
       from: process.env.TWILIO_PHONE_NUMBER,
-      to: booking.user.phone
+      to: `${booking.user.countryCode}${booking.user.phone}`
     });
     console.log("SMS enviado con \xE9xito");
   } catch (error) {
@@ -730,12 +731,10 @@ async function sendConfirmationSMS(booking) {
 var bookingHooks = {
   afterOperation: async ({ operation, item, context }) => {
     if (operation === "create") {
-      console.log("item");
-      console.log(item);
       const [user, activity] = await Promise.all([
         context.db.User.findOne({
           where: { id: item.userId },
-          query: "id name lastName email phone"
+          query: "id name lastName email phone countryCode"
         }),
         context.db.Activity.findOne({
           where: { id: item.activityId },
@@ -1165,6 +1164,7 @@ var Role_default = (0, import_core18.list)({
   fields: {
     name: (0, import_fields18.select)({
       options: role_options,
+      isIndexed: "unique",
       validation: { isRequired: true }
     }),
     user: (0, import_fields18.relationship)({
@@ -1687,8 +1687,7 @@ var keystone_default = withAuth(
       }
     },
     graphql: {
-      extendGraphqlSchema,
-      path: "/api/graphql"
+      extendGraphqlSchema
     },
     lists: schema_default,
     session
