@@ -109,6 +109,9 @@ const resolver = {
         query: "id name stripeCustomerId"
       });
 
+      console.log("user");
+      console.log(user);
+
       const paymentMethod = await context.query.PaymentMethod.findOne({
         where: {
           id: dataPayment.paymentMethodId,

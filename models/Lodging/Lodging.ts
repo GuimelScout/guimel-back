@@ -1,7 +1,7 @@
 import { graphql, list } from "@keystone-6/core";
 import { text, timestamp, relationship, image, select, virtual, decimal } from "@keystone-6/core/fields";
-import access from "../../utils/generalAccess/access";
 import { linkHooks } from "./Lodging.hooks";
+import access from "./Lodging.access";
 
 export default list({
   access,
@@ -52,7 +52,7 @@ export default list({
     reviewStar: virtual({
       field: graphql.field({
         type: graphql.Float,
-        async resolve(item, args, context) {
+        async resolve(item: any, args, context) {
           const reviews = await context.db.Review.findMany({
             where: { lodging: { id: { equals: item.id } } },
           });

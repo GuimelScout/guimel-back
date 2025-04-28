@@ -30,8 +30,6 @@ export default list({
       field: graphql.field({
         type: graphql.String,
         async resolve(item: any) {
-          console.log("item");
-          console.log(item);
           const fecha = new Date(item.createdAt);
           const day = fecha.getDate().toString().padStart(2, '0');
           const month = (fecha.getMonth() + 1).toString().padStart(2, '0');

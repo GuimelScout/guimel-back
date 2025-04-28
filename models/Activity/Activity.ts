@@ -8,9 +8,9 @@ import {
   virtual,
   image,
 } from "@keystone-6/core/fields";
-import access from "../../utils/generalAccess/access";
 import { linkHooks } from "./Activity.hooks";
 import { document } from '@keystone-6/fields-document';
+import access from "./Activity.access";
 
 export default list({
   access,
@@ -46,7 +46,7 @@ export default list({
       reviewStar: virtual({
         field: graphql.field({
           type: graphql.Float,
-          async resolve(item, args, context) {
+          async resolve(item: any, args, context) {
             const reviews = await context.db.Review.findMany({
               where: { activity: { id: { equals: item.id } } },
             });

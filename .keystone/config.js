@@ -43,22 +43,6 @@ dotenv.config({ path: path.resolve(process.cwd(), "config", ".env.dev") });
 var import_core = require("@keystone-6/core");
 var import_fields = require("@keystone-6/core/fields");
 
-// utils/generalAccess/access.ts
-var access = {
-  operation: {
-    query: () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true
-  },
-  filter: {
-    query: () => true,
-    update: () => true,
-    delete: () => true
-  }
-};
-var access_default = access;
-
 // utils/helpers/unike_link.ts
 function genUniqueLink(link) {
   return link.toLocaleLowerCase().replaceAll(" ", "-").replace(/ñ/g, "n").replace(/[^a-z0-9-]/g, "");
@@ -87,9 +71,30 @@ var linkHooks = {
   }
 };
 
+// models/Lodging/Lodging.access.ts
+var access = {
+  operation: {
+    query: ({ session: session2 }) => true,
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => true,
+    delete: ({ session: session2 }) => true
+  },
+  filter: {
+    query: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => true,
+    delete: ({ session: session2 }) => true
+  },
+  item: {
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => true,
+    delete: ({ session: session2 }) => true
+  }
+};
+var Lodging_access_default = access;
+
 // models/Lodging/Lodging.ts
 var Lodging_default = (0, import_core.list)({
-  access: access_default,
+  access: Lodging_access_default,
   fields: {
     name: (0, import_fields.text)({ validation: { isRequired: true } }),
     description: (0, import_fields.text)({ ui: { displayMode: "textarea" } }),
@@ -399,6 +404,24 @@ var User_default = (0, import_core2.list)({
 // models/Lodging/LodgingType.ts
 var import_core3 = require("@keystone-6/core");
 var import_fields3 = require("@keystone-6/core/fields");
+
+// utils/generalAccess/access.ts
+var access3 = {
+  operation: {
+    query: () => true,
+    create: () => true,
+    update: () => true,
+    delete: () => true
+  },
+  filter: {
+    query: () => true,
+    update: () => true,
+    delete: () => true
+  }
+};
+var access_default = access3;
+
+// models/Lodging/LodgingType.ts
 var LodgingType_default = (0, import_core3.list)({
   access: access_default,
   fields: {
@@ -457,8 +480,31 @@ var linkHooks3 = {
 
 // models/Activity/Activity.ts
 var import_fields_document = require("@keystone-6/fields-document");
+
+// models/Activity/Activity.access.ts
+var access4 = {
+  operation: {
+    query: ({ session: session2 }) => true,
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => true,
+    delete: ({ session: session2 }) => true
+  },
+  filter: {
+    query: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => true,
+    delete: ({ session: session2 }) => true
+  },
+  item: {
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => true,
+    delete: ({ session: session2 }) => true
+  }
+};
+var Activity_access_default = access4;
+
+// models/Activity/Activity.ts
 var Activity_default = (0, import_core4.list)({
-  access: access_default,
+  access: Activity_access_default,
   fields: {
     name: (0, import_fields4.text)({ validation: { isRequired: true } }),
     description: (0, import_fields4.text)({ ui: { displayMode: "textarea" } }),
@@ -781,8 +827,6 @@ var Booking_default = (0, import_core9.list)({
       field: import_core9.graphql.field({
         type: import_core9.graphql.String,
         async resolve(item) {
-          console.log("item");
-          console.log(item);
           const fecha = new Date(item.createdAt);
           const day = fecha.getDate().toString().padStart(2, "0");
           const month = (fecha.getMonth() + 1).toString().padStart(2, "0");
@@ -1087,7 +1131,7 @@ var import_fields17 = require("@keystone-6/core/fields");
 var import_core17 = require("@keystone-6/core");
 
 // models/Payment/PaymentMethod.access.ts
-var access3 = {
+var access5 = {
   operation: {
     query: ({ session: session2 }) => true,
     create: ({ session: session2 }) => true,
@@ -1105,7 +1149,7 @@ var access3 = {
     delete: ({ session: session2 }) => true
   }
 };
-var PaymentMethod_access_default = access3;
+var PaymentMethod_access_default = access5;
 
 // models/Payment/PaymentMethod.ts
 var PaymentMethod_default = (0, import_core17.list)({
@@ -1325,6 +1369,8 @@ var resolver = {
         },
         query: "id name stripeCustomerId"
       });
+      console.log("user");
+      console.log(user);
       const paymentMethod = await context.query.PaymentMethod.findOne({
         where: {
           id: dataPayment.paymentMethodId
