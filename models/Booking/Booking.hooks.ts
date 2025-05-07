@@ -1,6 +1,5 @@
 import { sendConfirmationEmail, sendConfirmationSMS } from "../../utils/notification";
 
-
 export const bookingHooks = {
     afterOperation: async ({ operation, item, context }: any) => {
       if (operation === 'create') {

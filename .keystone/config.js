@@ -877,8 +877,45 @@ var Booking_default = (0, import_core9.list)({
 // models/Review/Review.ts
 var import_core10 = require("@keystone-6/core");
 var import_fields10 = require("@keystone-6/core/fields");
+
+// models/Review/Review.access.ts
+var access5 = {
+  operation: {
+    query: ({ session: session2 }) => true,
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => true,
+    delete: ({ session: session2 }) => true
+  },
+  filter: {
+    query: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => true,
+    delete: ({ session: session2 }) => true
+  },
+  item: {
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => true,
+    delete: ({ session: session2 }) => true
+  }
+};
+var Review_access_default = access5;
+
+// models/Review/Review.hooks.ts
+var reviewHooks = {
+  resolveInput: async ({ resolvedData, item, context, operation }) => {
+    if (operation === "create" && context.session?.itemId) {
+      return {
+        ...resolvedData,
+        user: { connect: { id: context.session.itemId } }
+      };
+    }
+    return resolvedData;
+  }
+};
+
+// models/Review/Review.ts
 var Review_default = (0, import_core10.list)({
-  access: access_default,
+  access: Review_access_default,
+  hooks: reviewHooks,
   fields: {
     review: (0, import_fields10.text)(),
     rating: (0, import_fields10.integer)(),
@@ -1131,7 +1168,7 @@ var import_fields17 = require("@keystone-6/core/fields");
 var import_core17 = require("@keystone-6/core");
 
 // models/Payment/PaymentMethod.access.ts
-var access5 = {
+var access6 = {
   operation: {
     query: ({ session: session2 }) => true,
     create: ({ session: session2 }) => true,
@@ -1149,7 +1186,7 @@ var access5 = {
     delete: ({ session: session2 }) => true
   }
 };
-var PaymentMethod_access_default = access5;
+var PaymentMethod_access_default = access6;
 
 // models/Payment/PaymentMethod.ts
 var PaymentMethod_default = (0, import_core17.list)({
@@ -1369,8 +1406,6 @@ var resolver = {
         },
         query: "id name stripeCustomerId"
       });
-      console.log("user");
-      console.log(user);
       const paymentMethod = await context.query.PaymentMethod.findOne({
         where: {
           id: dataPayment.paymentMethodId
