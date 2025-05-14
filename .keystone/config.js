@@ -800,8 +800,18 @@ var bookingHooks = {
         activity,
         lodging
       };
-      await sendConfirmationEmail(bookingInfo);
-      await sendConfirmationSMS(bookingInfo);
+      try {
+        await sendConfirmationEmail(bookingInfo);
+      } catch (e) {
+        console.log("Error al enviar el correo de confirmaci\xF3n.");
+        console.log(e);
+      }
+      try {
+        await sendConfirmationSMS(bookingInfo);
+      } catch (e) {
+        console.log("Error al enviar el mensaje de confirmaci\xF3n.");
+        console.log(e);
+      }
     }
   }
 };

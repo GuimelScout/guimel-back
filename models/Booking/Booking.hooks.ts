@@ -27,8 +27,18 @@ export const bookingHooks = {
           activity,
           lodging,
         };
-        await sendConfirmationEmail(bookingInfo);
-        await sendConfirmationSMS(bookingInfo);
+        try{
+          await sendConfirmationEmail(bookingInfo);
+        }catch (e){
+          console.log("Error al enviar el correo de confirmación.");
+          console.log(e);
+        }
+         try{
+          await sendConfirmationSMS(bookingInfo);
+        }catch(e){
+          console.log("Error al enviar el mensaje de confirmación.");
+          console.log(e);
+        } 
       }
     },
 };
