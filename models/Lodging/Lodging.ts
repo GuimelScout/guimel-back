@@ -93,7 +93,7 @@ export default list({
       ref: "LodgingInclude.lodging",
       many: true,
     }),
-    logo: image({ storage: "local_images" }),
+    logo: image({ storage: "s3_files" }),
     createdAt: timestamp({
       defaultValue: {
         kind: "now",

@@ -177,7 +177,7 @@ var Lodging_default = (0, import_core.list)({
       ref: "LodgingInclude.lodging",
       many: true
     }),
-    logo: (0, import_fields.image)({ storage: "local_images" }),
+    logo: (0, import_fields.image)({ storage: "s3_files" }),
     createdAt: (0, import_fields.timestamp)({
       defaultValue: {
         kind: "now"
@@ -388,7 +388,7 @@ var User_default = (0, import_core2.list)({
       many: true
     }),
     verified: (0, import_fields2.checkbox)(),
-    image: (0, import_fields2.image)({ storage: "local_images" }),
+    image: (0, import_fields2.image)({ storage: "s3_files" }),
     createdAt: (0, import_fields2.timestamp)({
       defaultValue: {
         kind: "now"
@@ -596,7 +596,7 @@ var Activity_default = (0, import_core4.list)({
         }
       }
     }),
-    image: (0, import_fields4.image)({ storage: "local_images" }),
+    image: (0, import_fields4.image)({ storage: "s3_files" }),
     hostBy: (0, import_fields4.relationship)({
       ref: "User.activity"
     }),
@@ -991,7 +991,7 @@ var Location_default = (0, import_core11.list)({
       ref: "Lodging.location",
       many: true
     }),
-    image: (0, import_fields11.image)({ storage: "local_images" }),
+    image: (0, import_fields11.image)({ storage: "s3_files" }),
     link: (0, import_fields11.text)({
       isIndexed: "unique",
       hooks: linkHooks4,
@@ -1024,7 +1024,7 @@ var ActivityGallery_default = (0, import_core12.list)({
   access: access_default,
   fields: {
     description: (0, import_fields12.text)(),
-    image: (0, import_fields12.image)({ storage: "local_images" }),
+    image: (0, import_fields12.image)({ storage: "s3_files" }),
     activity: (0, import_fields12.relationship)({
       ref: "Activity.gallery",
       many: true
@@ -1048,7 +1048,7 @@ var LodgingGallery_default = (0, import_core13.list)({
   access: access_default,
   fields: {
     description: (0, import_fields13.text)(),
-    image: (0, import_fields13.image)({ storage: "local_images" }),
+    image: (0, import_fields13.image)({ storage: "s3_files" }),
     lodging: (0, import_fields13.relationship)({
       ref: "Lodging.gallery",
       many: true
@@ -1072,7 +1072,7 @@ var LocationGallery_default = (0, import_core14.list)({
   access: access_default,
   fields: {
     description: (0, import_fields14.text)(),
-    image: (0, import_fields14.image)({ storage: "local_images" }),
+    image: (0, import_fields14.image)({ storage: "s3_files" }),
     location: (0, import_fields14.relationship)({
       ref: "Location.gallery",
       many: true
@@ -1751,11 +1751,15 @@ function extendGraphqlSchema(baseSchema) {
 var path2 = require("path");
 var dotenv2 = require("dotenv");
 dotenv2.config({ path: path2.resolve(process.cwd(), "config", ".env.dev") });
-if (process.env.NODE_ENV !== "test" && !process.env.IS_BUILDING) {
-  if (!process.env.ALLOW_ORIGINS) {
-    throw new Error("Allow Origins are not set");
-  }
+if (!process.env.S3_BUCKET_NAME || !process.env.S3_REGION || !process.env.S3_ACCESS_KEY_ID || !process.env.S3_SECRET_ACCESS_KEY) {
+  throw new Error("S3 Configs are not set");
 }
+var {
+  S3_BUCKET_NAME: bucketName = "",
+  S3_REGION: region = "",
+  S3_ACCESS_KEY_ID: accessKeyId = "",
+  S3_SECRET_ACCESS_KEY: secretAccessKey = ""
+} = process.env;
 var keystone_default = withAuth(
   (0, import_core19.config)({
     db: {
@@ -1775,6 +1779,22 @@ var keystone_default = withAuth(
           path: "/images"
         },
         storagePath: "public/images"
+      },
+      s3_files: {
+        kind: "s3",
+        // this storage uses S3
+        type: "image",
+        // only for files
+        bucketName,
+        // from your S3_BUCKET_NAME environment variable
+        region,
+        // from your S3_REGION environment variable
+        accessKeyId,
+        // from your S3_ACCESS_KEY_ID environment variable
+        secretAccessKey,
+        // from your S3_SECRET_ACCESS_KEY environment variable
+        signed: { expiry: 3600 }
+        // (optional) links will be signed with an expiry of 3600 seconds (an hour)
       }
     },
     graphql: {

@@ -101,7 +101,7 @@ export default list({
       many: true,
     }),
     verified: checkbox(),
-    image: image({ storage: "local_images" }),
+    image: image({ storage: "s3_files" }),
 
     createdAt: timestamp({
       defaultValue: {

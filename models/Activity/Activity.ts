@@ -107,7 +107,7 @@ export default list({
         },
       },
     }),
-    image: image({ storage: "local_images" }),
+    image: image({ storage: "s3_files" }),
     hostBy: relationship({
       ref: "User.activity",
     }),

@@ -11,7 +11,7 @@ export default list({
   access,
   fields: {
     description: text(),
-    image: image({ storage: "local_images" }),
+    image: image({ storage: "s3_files" }),
     location: relationship({
       ref: "Location.gallery",
       many: true,

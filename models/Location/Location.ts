@@ -21,7 +21,7 @@ export default list({
       ref: "Lodging.location",
       many: true,
     }),
-    image: image({ storage: "local_images" }),
+    image: image({ storage: "s3_files" }),
     link: text({
           isIndexed: "unique",
           hooks: linkHooks,
