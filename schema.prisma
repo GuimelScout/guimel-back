@@ -25,7 +25,7 @@ model Activity {
   availableId           String?                @unique @map("available")
   available_days        ActivityAvailableDay[] @relation("ActivityAvailableDay_activity")
   lodging               Lodging[]              @relation("Activity_lodging")
-  booking               Booking[]              @relation("Booking_activity")
+  booking               Booking[]              @relation("Activity_booking")
   review                Review[]               @relation("Review_activity")
   location              Location[]             @relation("Activity_location")
   gallery               ActivityGallery[]      @relation("Activity_gallery")
@@ -104,8 +104,7 @@ model Booking {
   guests_adults Int?
   guests_childs Int?
   status        BookingStatusType @default(pending)
-  activity      Activity?         @relation("Booking_activity", fields: [activityId], references: [id])
-  activityId    String?           @map("activity")
+  activity      Activity[]        @relation("Activity_booking")
   lodging       Lodging?          @relation("Booking_lodging", fields: [lodgingId], references: [id])
   lodgingId     String?           @map("lodging")
   user          User?             @relation("Booking_user", fields: [userId], references: [id])
@@ -114,7 +113,6 @@ model Booking {
   paymentId     String?           @unique @map("payment")
   createdAt     DateTime?         @default(now())
 
-  @@index([activityId])
   @@index([lodgingId])
   @@index([userId])
 }

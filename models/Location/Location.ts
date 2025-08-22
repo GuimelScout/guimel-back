@@ -5,8 +5,8 @@ import {
   text,
   image,
 } from "@keystone-6/core/fields";
-import access from "../../utils/generalAccess/access";
 import { linkHooks } from "./Location.hooks";
+import access from "./Location.access";
 
 export default list({
   access,

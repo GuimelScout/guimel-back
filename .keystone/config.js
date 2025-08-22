@@ -71,23 +71,54 @@ var linkHooks = {
   }
 };
 
+// models/Role/constants.ts
+var role_options = [
+  { label: "Admin", value: "admin" /* ADMIN */ },
+  { label: "Anfitri\xF3n", value: "hoster" /* HOSTER */ },
+  { label: "Usuario", value: "user" /* USER */ }
+];
+
+// auth/permissions.ts
+var hasRole = (session2, allowedRoles) => {
+  const hasAccess = session2.data.role?.some(
+    (role) => [...allowedRoles, "admin" /* ADMIN */].includes(role.name)
+  );
+  return !!session2 && hasAccess;
+};
+
 // models/Lodging/Lodging.access.ts
 var access = {
   operation: {
     query: ({ session: session2 }) => true,
-    create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
   },
   filter: {
     query: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
+    update: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { hostBy: { id: { equals: session2.itemId } } };
+      }
+      return false;
+    },
+    delete: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { hostBy: { id: { equals: session2.itemId } } };
+      }
+      return false;
+    }
   },
   item: {
-    create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
   }
 };
 var Lodging_access_default = access;
@@ -284,18 +315,34 @@ var access2 = {
   operation: {
     query: ({ session: session2 }) => true,
     create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */])
   },
   filter: {
     query: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */])
   },
   item: {
     create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
+    update: ({ session: session2, item }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */])) {
+        return session2?.itemId === item?.id;
+      }
+      return false;
+    },
+    delete: ({ session: session2, item }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */])) {
+        return session2?.itemId === item?.id;
+      }
+      return false;
+    }
   }
 };
 var User_access_default = access2;
@@ -325,7 +372,10 @@ var User_default = (0, import_core2.list)({
     stripeCustomerId: (0, import_fields2.text)(),
     role: (0, import_fields2.relationship)({
       ref: "Role.user",
-      many: true
+      many: true,
+      access: {
+        update: ({ session: session2 }) => hasRole(session2, ["admin" /* ADMIN */])
+      }
     }),
     lodging: (0, import_fields2.relationship)({
       ref: "Lodging.hostBy",
@@ -404,26 +454,8 @@ var User_default = (0, import_core2.list)({
 // models/Lodging/LodgingType.ts
 var import_core3 = require("@keystone-6/core");
 var import_fields3 = require("@keystone-6/core/fields");
-
-// utils/generalAccess/access.ts
-var access3 = {
-  operation: {
-    query: () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true
-  },
-  filter: {
-    query: () => true,
-    update: () => true,
-    delete: () => true
-  }
-};
-var access_default = access3;
-
-// models/Lodging/LodgingType.ts
 var LodgingType_default = (0, import_core3.list)({
-  access: access_default,
+  access: Lodging_access_default,
   fields: {
     type: (0, import_fields3.select)({
       options: [
@@ -482,25 +514,41 @@ var linkHooks3 = {
 var import_fields_document = require("@keystone-6/fields-document");
 
 // models/Activity/Activity.access.ts
-var access4 = {
+var access3 = {
   operation: {
     query: ({ session: session2 }) => true,
-    create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
   },
   filter: {
     query: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
+    update: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { hostBy: { id: { equals: session2.itemId } } };
+      }
+      return false;
+    },
+    delete: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { hostBy: { id: { equals: session2.itemId } } };
+      }
+      return false;
+    }
   },
   item: {
-    create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
   }
 };
-var Activity_access_default = access4;
+var Activity_access_default = access3;
 
 // models/Activity/Activity.ts
 var Activity_default = (0, import_core4.list)({
@@ -615,8 +663,47 @@ var Activity_default = (0, import_core4.list)({
 // models/Activity/ActivityInclude.ts
 var import_core5 = require("@keystone-6/core");
 var import_fields5 = require("@keystone-6/core/fields");
+
+// models/Activity/ActivityFieldsMany.access.ts
+var access4 = {
+  operation: {
+    query: ({ session: session2 }) => true,
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+  },
+  filter: {
+    query: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { activity: { some: { hostBy: { id: { equals: session2.itemId } } } } };
+      }
+      return false;
+    },
+    delete: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { activity: { some: { hostBy: { id: { equals: session2.itemId } } } } };
+      }
+      return false;
+    }
+  },
+  item: {
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+  }
+};
+var ActivityFieldsMany_access_default = access4;
+
+// models/Activity/ActivityInclude.ts
 var ActivityInclude_default = (0, import_core5.list)({
-  access: access_default,
+  access: ActivityFieldsMany_access_default,
   fields: {
     name: (0, import_fields5.text)({ validation: { isRequired: true } }),
     description: (0, import_fields5.text)({ ui: { displayMode: "textarea" } }),
@@ -640,7 +727,7 @@ var ActivityInclude_default = (0, import_core5.list)({
 var import_core6 = require("@keystone-6/core");
 var import_fields6 = require("@keystone-6/core/fields");
 var ActivityWhatToDo_default = (0, import_core6.list)({
-  access: access_default,
+  access: ActivityFieldsMany_access_default,
   fields: {
     name: (0, import_fields6.text)({ validation: { isRequired: true } }),
     description: (0, import_fields6.text)({ ui: { displayMode: "textarea" } }),
@@ -663,8 +750,47 @@ var ActivityWhatToDo_default = (0, import_core6.list)({
 // models/Activity/ActivityAvailable.ts
 var import_core7 = require("@keystone-6/core");
 var import_fields7 = require("@keystone-6/core/fields");
+
+// models/Activity/ActivityFields.access.ts
+var access5 = {
+  operation: {
+    query: ({ session: session2 }) => true,
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+  },
+  filter: {
+    query: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { activity: { hostBy: { id: { equals: session2.itemId } } } };
+      }
+      return false;
+    },
+    delete: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { activity: { hostBy: { id: { equals: session2.itemId } } } };
+      }
+      return false;
+    }
+  },
+  item: {
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+  }
+};
+var ActivityFields_access_default = access5;
+
+// models/Activity/ActivityAvailable.ts
 var ActivityAvailable_default = (0, import_core7.list)({
-  access: access_default,
+  access: ActivityFields_access_default,
   fields: {
     start_date: (0, import_fields7.calendarDay)(),
     end_date: (0, import_fields7.calendarDay)(),
@@ -712,7 +838,7 @@ var ActivityAvailable_default = (0, import_core7.list)({
 var import_core8 = require("@keystone-6/core");
 var import_fields8 = require("@keystone-6/core/fields");
 var ActivityAvailableDay_default = (0, import_core8.list)({
-  access: access_default,
+  access: ActivityFields_access_default,
   fields: {
     day: (0, import_fields8.calendarDay)(),
     activity: (0, import_fields8.relationship)({
@@ -816,9 +942,46 @@ var bookingHooks = {
   }
 };
 
+// models/Booking/Booking.access.ts
+var access6 = {
+  operation: {
+    query: ({ session: session2 }) => true,
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+  },
+  filter: {
+    query: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { user: { id: { equals: session2.itemId } } };
+      }
+      return false;
+    },
+    delete: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { user: { id: { equals: session2.itemId } } };
+      }
+      return false;
+    }
+  },
+  item: {
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+  }
+};
+var Booking_access_default = access6;
+
 // models/Booking/Booking.ts
 var Booking_default = (0, import_core9.list)({
-  access: access_default,
+  access: Booking_access_default,
   hooks: bookingHooks,
   fields: {
     start_date: (0, import_fields9.calendarDay)(),
@@ -861,7 +1024,8 @@ var Booking_default = (0, import_core9.list)({
       ]
     }),
     activity: (0, import_fields9.relationship)({
-      ref: "Activity.booking"
+      ref: "Activity.booking",
+      many: true
     }),
     lodging: (0, import_fields9.relationship)({
       ref: "Lodging.booking"
@@ -888,27 +1052,6 @@ var Booking_default = (0, import_core9.list)({
 var import_core10 = require("@keystone-6/core");
 var import_fields10 = require("@keystone-6/core/fields");
 
-// models/Review/Review.access.ts
-var access5 = {
-  operation: {
-    query: ({ session: session2 }) => true,
-    create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
-  },
-  filter: {
-    query: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
-  },
-  item: {
-    create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
-  }
-};
-var Review_access_default = access5;
-
 // models/Review/Review.hooks.ts
 var reviewHooks = {
   resolveInput: async ({ resolvedData, item, context, operation }) => {
@@ -922,9 +1065,30 @@ var reviewHooks = {
   }
 };
 
+// utils/generalAccess/access.ts
+var access7 = {
+  operation: {
+    query: ({ session: session2 }) => true,
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */])
+  },
+  filter: {
+    query: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */])
+  },
+  item: {
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */])
+  }
+};
+var access_default = access7;
+
 // models/Review/Review.ts
 var Review_default = (0, import_core10.list)({
-  access: Review_access_default,
+  access: access_default,
   hooks: reviewHooks,
   fields: {
     review: (0, import_fields10.text)(),
@@ -977,9 +1141,30 @@ var linkHooks4 = {
   }
 };
 
+// models/Location/Location.access.ts
+var access8 = {
+  operation: {
+    query: ({ session: session2 }) => true,
+    create: ({ session: session2 }) => hasRole(session2, []),
+    update: ({ session: session2 }) => hasRole(session2, []),
+    delete: ({ session: session2 }) => hasRole(session2, [])
+  },
+  filter: {
+    query: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => hasRole(session2, []),
+    delete: ({ session: session2 }) => hasRole(session2, [])
+  },
+  item: {
+    create: ({ session: session2 }) => hasRole(session2, []),
+    update: ({ session: session2 }) => hasRole(session2, []),
+    delete: ({ session: session2 }) => hasRole(session2, [])
+  }
+};
+var Location_access_default = access8;
+
 // models/Location/Location.ts
 var Location_default = (0, import_core11.list)({
-  access: access_default,
+  access: Location_access_default,
   fields: {
     name: (0, import_fields11.text)(),
     description: (0, import_fields11.text)({ ui: { displayMode: "textarea" } }),
@@ -1021,7 +1206,7 @@ var Location_default = (0, import_core11.list)({
 var import_core12 = require("@keystone-6/core");
 var import_fields12 = require("@keystone-6/core/fields");
 var ActivityGallery_default = (0, import_core12.list)({
-  access: access_default,
+  access: ActivityFieldsMany_access_default,
   fields: {
     description: (0, import_fields12.text)(),
     image: (0, import_fields12.image)({ storage: "s3_files" }),
@@ -1044,8 +1229,47 @@ var ActivityGallery_default = (0, import_core12.list)({
 // models/Lodging/LodgingGallery.ts
 var import_core13 = require("@keystone-6/core");
 var import_fields13 = require("@keystone-6/core/fields");
+
+// models/Lodging/LodgingFields.access.ts
+var access9 = {
+  operation: {
+    query: ({ session: session2 }) => true,
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+  },
+  filter: {
+    query: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { hostBy: { id: { equals: session2.itemId } } };
+      }
+      return false;
+    },
+    delete: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { hostBy: { id: { equals: session2.itemId } } };
+      }
+      return false;
+    }
+  },
+  item: {
+    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+  }
+};
+var LodgingFields_access_default = access9;
+
+// models/Lodging/LodgingGallery.ts
 var LodgingGallery_default = (0, import_core13.list)({
-  access: access_default,
+  access: LodgingFields_access_default,
   fields: {
     description: (0, import_fields13.text)(),
     image: (0, import_fields13.image)({ storage: "s3_files" }),
@@ -1069,7 +1293,7 @@ var LodgingGallery_default = (0, import_core13.list)({
 var import_core14 = require("@keystone-6/core");
 var import_fields14 = require("@keystone-6/core/fields");
 var LocationGallery_default = (0, import_core14.list)({
-  access: access_default,
+  access: Location_access_default,
   fields: {
     description: (0, import_fields14.text)(),
     image: (0, import_fields14.image)({ storage: "s3_files" }),
@@ -1093,7 +1317,7 @@ var LocationGallery_default = (0, import_core14.list)({
 var import_core15 = require("@keystone-6/core");
 var import_fields15 = require("@keystone-6/core/fields");
 var LodgingInclude_default = (0, import_core15.list)({
-  access: access_default,
+  access: Lodging_access_default,
   fields: {
     name: (0, import_fields15.text)({ validation: { isRequired: true } }),
     description: (0, import_fields15.text)({ ui: { displayMode: "textarea" } }),
@@ -1116,8 +1340,47 @@ var LodgingInclude_default = (0, import_core15.list)({
 // models/Payment/Payment.ts
 var import_core16 = require("@keystone-6/core");
 var import_fields16 = require("@keystone-6/core/fields");
+
+// models/Payment/Payment.access.ts
+var access10 = {
+  operation: {
+    query: ({ session: session2 }) => true,
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+  },
+  filter: {
+    query: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { user: { id: { equals: session2.itemId } } };
+      }
+      return false;
+    },
+    delete: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return { user: { id: { equals: session2.itemId } } };
+      }
+      return false;
+    }
+  },
+  item: {
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+  }
+};
+var Payment_access_default = access10;
+
+// models/Payment/Payment.ts
 var Payment_default = (0, import_core16.list)({
-  access: access_default,
+  access: Payment_access_default,
   fields: {
     amount: (0, import_fields16.decimal)({
       scale: 6,
@@ -1176,31 +1439,8 @@ var Payment_default = (0, import_core16.list)({
 // models/Payment/PaymentMethod.ts
 var import_fields17 = require("@keystone-6/core/fields");
 var import_core17 = require("@keystone-6/core");
-
-// models/Payment/PaymentMethod.access.ts
-var access6 = {
-  operation: {
-    query: ({ session: session2 }) => true,
-    create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
-  },
-  filter: {
-    query: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
-  },
-  item: {
-    create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => true,
-    delete: ({ session: session2 }) => true
-  }
-};
-var PaymentMethod_access_default = access6;
-
-// models/Payment/PaymentMethod.ts
 var PaymentMethod_default = (0, import_core17.list)({
-  access: PaymentMethod_access_default,
+  access: Payment_access_default,
   fields: {
     cardType: (0, import_fields17.text)(),
     isDefault: (0, import_fields17.checkbox)(),
@@ -1241,15 +1481,6 @@ var PaymentMethod_default = (0, import_core17.list)({
 // models/Role/Role.ts
 var import_core18 = require("@keystone-6/core");
 var import_fields18 = require("@keystone-6/core/fields");
-
-// models/Role/constants.ts
-var role_options = [
-  { label: "Admin", value: "admin" /* ADMIN */ },
-  { label: "Anfitri\xF3n", value: "hoster" /* HOSTER */ },
-  { label: "Usuario", value: "user" /* USER */ }
-];
-
-// models/Role/Role.ts
 var Role_default = (0, import_core18.list)({
   access: access_default,
   fields: {
@@ -1578,8 +1809,6 @@ var definition2 = `
 `;
 var resolver2 = {
   SetUpIntentStripe: async (root, { email }, context) => {
-    console.log("context.session");
-    console.log(context.session);
     const user = await context.query.User.findOne({
       where: {
         email

@@ -24,9 +24,6 @@ const definition = `
 const resolver = { SetUpIntentStripe: async (root: any, {email}: {email:string}, context: KeystoneContext) => {
     //validateAccess(context.session, [Role.CLIENT]);
 
-    console.log("context.session");
-    console.log(context.session);
-
     const user = await context.query.User.findOne({
       where: {
         email: email,

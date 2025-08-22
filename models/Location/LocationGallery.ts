@@ -5,7 +5,7 @@ import {
   image,
   text,
 } from "@keystone-6/core/fields";
-import access from "../../utils/generalAccess/access";
+import access from "./Location.access";
 
 export default list({
   access,

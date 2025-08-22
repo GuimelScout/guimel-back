@@ -5,7 +5,7 @@ import {
   relationship,
 } from "@keystone-6/core/fields";
 import { list } from "@keystone-6/core";
-import access from "./PaymentMethod.access";
+import access from "./Payment.access";
 
 export default list({
   access,

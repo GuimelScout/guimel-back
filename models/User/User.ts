@@ -11,6 +11,7 @@ import {
 } from "@keystone-6/core/fields";
 import { emailHooks, hooksUser, linkHooks, phoneHooks } from "./User.hooks";
 import access from "./User.access";
+import { hasRole } from "../../auth/permissions";
 import { Role } from "../Role/constants";
 
 export default list({
@@ -38,6 +39,9 @@ export default list({
     role: relationship({
       ref: "Role.user",
       many: true,
+      access: {
+        update: ({ session }) => hasRole(session, [Role.ADMIN]),
+      },
     }),
     lodging: relationship({
       ref: "Lodging.hostBy",

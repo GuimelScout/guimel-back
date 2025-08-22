@@ -7,8 +7,8 @@ import {
   virtual,
   select,
 } from "@keystone-6/core/fields";
-import access from "../../utils/generalAccess/access";
 import { bookingHooks } from "./Booking.hooks";
+import access from "./Booking.access";
 
 export default list({
   access,
@@ -55,6 +55,7 @@ export default list({
     }),
     activity: relationship({
       ref: "Activity.booking",
+      many: true,
     }),
     lodging: relationship({
       ref: "Lodging.booking",

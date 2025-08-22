@@ -4,8 +4,7 @@ import { Role } from "../Role/constants";
 const access = {
   operation: {
     query: ({ session }: any) => true,
-    create: ({ session }: any) =>
-      hasRole(session, [Role.HOSTER]),
+    create: ({ session }: any) => true,
     update: ({ session }: any) =>
       hasRole(session, [Role.HOSTER]),
     delete: ({ session }: any) =>
@@ -15,13 +14,12 @@ const access = {
     query: ({ session }: any) => true,
     update: ({ session }: any) =>
       {
-
         if (hasRole(session, [Role.ADMIN])) {
           return true;
         }
 
         if (hasRole(session, [Role.HOSTER])) {
-          return { hostBy: { id: { equals: session.itemId } } };
+          return { user: { id: { equals: session.itemId } } };
         }
 
         return false;
@@ -33,15 +31,14 @@ const access = {
         }
 
         if (hasRole(session, [Role.HOSTER])) {
-          return { hostBy: { id: { equals: session.itemId } } };
+          return { user: { id: { equals: session.itemId } } };
         }
 
         return false;
       },
   },
   item: {
-    create: ({ session }: any) =>
-      hasRole(session, [Role.HOSTER]),
+    create: ({ session }: any) => true,
     update: ({ session }: any) =>
       hasRole(session, [Role.HOSTER]),
     delete: ({ session }: any) =>
