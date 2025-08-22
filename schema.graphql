@@ -753,7 +753,8 @@ type Booking {
   guestss: String
   code: String
   status: BookingStatusType
-  activity: Activity
+  activity(where: ActivityWhereInput! = {}, orderBy: [ActivityOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ActivityWhereUniqueInput): [Activity!]
+  activityCount(where: ActivityWhereInput! = {}): Int
   lodging: Lodging
   user: User
   payment: Payment
@@ -782,7 +783,7 @@ input BookingWhereInput {
   guests_adults: IntNullableFilter
   guests_childs: IntNullableFilter
   status: BookingStatusTypeNullableFilter
-  activity: ActivityWhereInput
+  activity: ActivityManyRelationFilter
   lodging: LodgingWhereInput
   user: UserWhereInput
   payment: PaymentWhereInput
@@ -823,7 +824,7 @@ input BookingUpdateInput {
   guests_adults: Int
   guests_childs: Int
   status: BookingStatusType
-  activity: ActivityRelateToOneForUpdateInput
+  activity: ActivityRelateToManyForUpdateInput
   lodging: LodgingRelateToOneForUpdateInput
   user: UserRelateToOneForUpdateInput
   payment: PaymentRelateToOneForUpdateInput
@@ -853,7 +854,7 @@ input BookingCreateInput {
   guests_adults: Int
   guests_childs: Int
   status: BookingStatusType
-  activity: ActivityRelateToOneForCreateInput
+  activity: ActivityRelateToManyForCreateInput
   lodging: LodgingRelateToOneForCreateInput
   user: UserRelateToOneForCreateInput
   payment: PaymentRelateToOneForCreateInput

@@ -21,7 +21,7 @@ const access = {
         }
 
         if (hasRole(session, [Role.HOSTER])) {
-          return { hostBy: { id: { equals: session.itemId } } };
+          return { activity: { some: { hostBy: { id: { equals: session.itemId } } } } };
         }
 
         return false;
@@ -33,7 +33,7 @@ const access = {
         }
 
         if (hasRole(session, [Role.HOSTER])) {
-          return { hostBy: { id: { equals: session.itemId } } };
+          return { activity: { some:  { hostBy: { id: { equals: session.itemId } } } } };
         }
 
         return false;

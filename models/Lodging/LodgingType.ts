@@ -1,6 +1,6 @@
 import { list } from "@keystone-6/core";
 import { text, timestamp, relationship,  select, integer } from "@keystone-6/core/fields";
-import access from "../../utils/generalAccess/access";
+import access from "./Lodging.access";
 
 export default list({
   access,

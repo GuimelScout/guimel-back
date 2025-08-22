@@ -5,8 +5,8 @@ import {
   integer,
   text,
 } from "@keystone-6/core/fields";
-import access from "./Review.access";
 import { reviewHooks } from "./Review.hooks";
+import access from "../../utils/generalAccess/access";
 
 export default list({
   access,
