@@ -35,6 +35,12 @@ export default list({
     }),
     description: text({ ui: { displayMode: "textarea" } }),
     instagram: text(),
+    facebook: text(),
+    twitter: text(),
+    linkedin: text(),
+    tiktok: text(),
+    youtube: text(),
+    website: text(),
     stripeCustomerId: text(),
     role: relationship({
       ref: "Role.user",

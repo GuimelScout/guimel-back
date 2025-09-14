@@ -1723,6 +1723,12 @@ type User {
   phone: String
   description: String
   instagram: String
+  facebook: String
+  twitter: String
+  linkedin: String
+  tiktok: String
+  youtube: String
+  website: String
   stripeCustomerId: String
   role(where: RoleWhereInput! = {}, orderBy: [RoleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RoleWhereUniqueInput): [Role!]
   roleCount(where: RoleWhereInput! = {}): Int
@@ -1775,6 +1781,12 @@ input UserWhereInput {
   phone: StringFilter
   description: StringFilter
   instagram: StringFilter
+  facebook: StringFilter
+  twitter: StringFilter
+  linkedin: StringFilter
+  tiktok: StringFilter
+  youtube: StringFilter
+  website: StringFilter
   stripeCustomerId: StringFilter
   role: RoleManyRelationFilter
   lodging: LodgingManyRelationFilter
@@ -1818,6 +1830,12 @@ input UserOrderByInput {
   phone: OrderDirection
   description: OrderDirection
   instagram: OrderDirection
+  facebook: OrderDirection
+  twitter: OrderDirection
+  linkedin: OrderDirection
+  tiktok: OrderDirection
+  youtube: OrderDirection
+  website: OrderDirection
   stripeCustomerId: OrderDirection
   link: OrderDirection
   status: OrderDirection
@@ -1835,6 +1853,12 @@ input UserUpdateInput {
   phone: String
   description: String
   instagram: String
+  facebook: String
+  twitter: String
+  linkedin: String
+  tiktok: String
+  youtube: String
+  website: String
   stripeCustomerId: String
   role: RoleRelateToManyForUpdateInput
   lodging: LodgingRelateToManyForUpdateInput
@@ -1879,6 +1903,12 @@ input UserCreateInput {
   phone: String
   description: String
   instagram: String
+  facebook: String
+  twitter: String
+  linkedin: String
+  tiktok: String
+  youtube: String
+  website: String
   stripeCustomerId: String
   role: RoleRelateToManyForCreateInput
   lodging: LodgingRelateToManyForCreateInput
