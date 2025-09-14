@@ -369,6 +369,12 @@ var User_default = (0, import_core2.list)({
     }),
     description: (0, import_fields2.text)({ ui: { displayMode: "textarea" } }),
     instagram: (0, import_fields2.text)(),
+    facebook: (0, import_fields2.text)(),
+    twitter: (0, import_fields2.text)(),
+    linkedin: (0, import_fields2.text)(),
+    tiktok: (0, import_fields2.text)(),
+    youtube: (0, import_fields2.text)(),
+    website: (0, import_fields2.text)(),
     stripeCustomerId: (0, import_fields2.text)(),
     role: (0, import_fields2.relationship)({
       ref: "Role.user",
