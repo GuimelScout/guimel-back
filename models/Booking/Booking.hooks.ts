@@ -1,18 +1,28 @@
 import { sendConfirmationEmail, sendConfirmationSMS } from "../../utils/notification";
 
 export const bookingHooks = {
+    
     afterOperation: async ({ operation, item, context }: any) => {
       if (operation === 'create') {
-        const [user, activity] = await Promise.all([
+
+        const [user, activities, location] = await Promise.all([
           context.db.User.findOne({
             where: { id: item.userId },
             query: 'id name lastName email phone countryCode',
           }),
-          context.db.Activity.findOne({
-            where: { id: item.activityId },
-            query: 'id name',
+
+        
+          context.db.Activity.findMany({
+            where: { booking: { some: { id: { equals: item.id } } } },
+            query: 'id name location { name image { url } }',
+          }),
+
+          context.db.Location.findOne({
+            where: { id: item.locationId },
+            query: 'name image { url }',
           }),
         ]);
+
         let lodging: any;
         if(item.lodgingId){
           lodging = context.db.Lodging.findOne({
@@ -20,11 +30,26 @@ export const bookingHooks = {
             query: 'id name',
           });
         }
-        
+
+        const hostIds = activities.map((item:any) => item.hostById).filter(Boolean);
+
+        const users = await context.db.User.findMany({
+          where: { id: { in: hostIds } },
+          query: 'id name lastName email phone countryCode',
+        });
+
+        const userMap = Object.fromEntries(users.map((u:any) => [u.id, u]));
+
+        const activitiesWithHost = activities.map((activity:any) => ({
+          ...activity,
+          host: userMap[activity.hostById] || null,
+        }));
+
         const bookingInfo = {
           ...item,
           user,
-          activity,
+          activitiesWithHost,
+          location,
           lodging,
         };
         try{

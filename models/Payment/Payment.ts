@@ -40,6 +40,7 @@ export default list({
     notes: text(),
     activity: relationship({
       ref: "Activity.payment",
+      many: true,
     }),
     lodging: relationship({
       ref: "Lodging.payment",

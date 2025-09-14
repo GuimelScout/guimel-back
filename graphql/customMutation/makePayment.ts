@@ -12,10 +12,11 @@ const typeDefs = `
 const definition = `
   makePayment(
   lodgingId: String, 
-  activityId: String!, 
+  locationId: String, 
+  activityIds: [String!]!, 
   startDate: CalendarDay!, 
   endDate: CalendarDay!,
-  guestss: String!, 
+  guestsCount: String!, 
   nameCard: String!, 
   email: String!, 
   notes: String!, 
@@ -25,103 +26,158 @@ const definition = `
   ): makePaymentType
 `;
 
+// Helper to validate input data
+type PaymentInput = {
+  activityIds: string[];
+  lodgingId?: string;
+  locationId: string;
+  startDate: Date;
+  endDate: Date;
+  guestsCount: string;
+  nameCard: string;
+  email: string;
+  paymentMethodId: string;
+  total: string;
+};
+
+function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total }: PaymentInput) {
+  if (!activityIds || !Array.isArray(activityIds) || activityIds.length === 0) {
+    throw new Error("At least one activity must be selected.");
+  }
+  if (!locationId) throw new Error("Location is required.");
+  if (!startDate || !endDate) throw new Error("Dates are required.");
+  if (!guestsCount || isNaN(Number(guestsCount)) || Number(guestsCount) <= 0) throw new Error("Number of guests must be greater than 0.");
+  if (!nameCard) throw new Error("Cardholder name is required.");
+  if (!email) throw new Error("Email is required.");
+  if (!paymentMethodId) throw new Error("Payment method is required.");
+  if (!total || isNaN(Number(total)) || Number(total) <= 0) throw new Error("Total must be greater than 0.");
+}
+
+type Activity = { id: string; name: string; price: string };
+type Lodging = { id: string; name: string; price: string } | undefined;
+
+function calculateTotal(activities: Activity[], lodging: Lodging, guestsCount: string): number {
+  let total = 0;
+  activities.forEach((activity: Activity) => {
+    total += parseFloat(activity.price || "0.00") * Number(guestsCount);
+  });
+  if (lodging) {
+    total += parseFloat(lodging.price || "0.00") * Number(guestsCount);
+  }
+  return total;
+}
+
+type StripePaymentIntentParams = {
+  total: string;
+  user: { stripeCustomerId: string };
+  paymentMethod: { stripePaymentMethodId: string; id: string };
+  activityNames: string;
+  activityIds: string;
+  lodgingId?: string;
+};
+
+async function createStripePaymentIntent({ total, user, paymentMethod, activityNames, activityIds, lodgingId }: StripePaymentIntentParams) {
+  return await Stripe.paymentIntents.create({
+    amount: Number(total) * 100,
+    currency: "mxn",
+    customer: user.stripeCustomerId,
+    payment_method: paymentMethod.stripePaymentMethodId,
+    description: `Payment for activities: ${activityNames} (${activityIds})`,
+    confirm: true,
+    off_session: true,
+    metadata: {
+      paymentMethod: paymentMethod.id,
+      activityIds: activityIds,
+      lodgingId: lodgingId,
+    }
+  });
+}
+
 const resolver = {
   makePayment: async (
     root: any,
     {
-      activityId,
+      activityIds,
       lodgingId,
+      locationId,
       startDate,
       endDate,
-      guestss,
+      guestsCount,
       nameCard,
       email,
       notes,
       paymentMethodId,
       total,
       noDuplicatePaymentMethod,
-    }: {
-      startDate: Date;
-      endDate: Date;
-      lodgingId: string;
-      activityId: string;
-      guestss: string;
-      nameCard: string;
-      email: string;
-      notes: string;
-      paymentMethodId: string;
-      total: string;
-      noDuplicatePaymentMethod: boolean;
-    },
+    }: PaymentInput & { notes: string; noDuplicatePaymentMethod: boolean },
     context: KeystoneContext,
   ) => {
-    
-    const dataPayment = {
-      lodgingId,
-      activityId,
-      startDate,
-      endDate,
-      guestss,
-      nameCard,
-      email,
-      notes,
-      paymentMethodId,
-      total
-    };
-
     try {
+      // Input validation
+      validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total });
 
-      let lodging: Record<string, any> | undefined;
-
-      const activity = await context.query.Activity.findOne({
-        where: {
-          id: dataPayment.activityId,
-        },
+      // Find activities
+      const activities = (await context.query.Activity.findMany({
+        where: { id: { in: activityIds } },
         query: "id name price"
-      });
-      
-      let totalInBack : number = parseFloat(activity.price || "0.00") * Number(guestss);
+      })) as Activity[];
+      if (!activities || activities.length === 0) throw new Error("No valid activities found.");
 
-      if(dataPayment.lodgingId){
-        lodging = await context.query.Lodging.findOne({
-          where: {
-            id: dataPayment.lodgingId,
-          },
+      // Find lodging if applicable
+      let lodging: Lodging = undefined;
+      if (lodgingId) {
+        lodging = (await context.query.Lodging.findOne({
+          where: { id: lodgingId },
           query: "id name price",
-        });
-        totalInBack += parseFloat(lodging?.price || "0.00") * Number(guestss);
-      }else{
-        lodging = undefined;
+        })) as Lodging;
+        if (!lodging) throw new Error("Selected lodging not found.");
       }
-
-      //Check if total is diferent from front
-      if(Number(total) != totalInBack){
+      // Calculate total in backend
+      const totalInBack = calculateTotal(activities, lodging, guestsCount);
+      if (Number(total) !== totalInBack) {
         return {
-          message: "Hubo un error de comunicación, por favor recargue la página e intente de nuevo.",
+          message: "Communication error, please reload the page and try again.",
           success: false,
         };
       }
 
-      const user = await context.query.User.findOne({
-        where: {
-          email: dataPayment.email,
-        },
-        query: "id name stripeCustomerId"
-      });
+      // Find user
+      const user = (await context.query.User.findOne({
+        where: { email },
+        query: "id name email stripeCustomerId"
+      })) as { id: string; name: string; email: string; stripeCustomerId: string };
+      if (!user) throw new Error("User not found.");
 
-      const paymentMethod = await context.query.PaymentMethod.findOne({
-        where: {
-          id: dataPayment.paymentMethodId,
-        },
-        query: "id stripeProcessorId stripePaymentMethodId"
-      }); 
-
-      if(noDuplicatePaymentMethod){
-          await Stripe.paymentMethods.attach(paymentMethod.stripePaymentMethodId,{
-            customer: user.stripeCustomerId,
+      // Check if user has Stripe customer ID, create one if not
+      if (!user.stripeCustomerId) {
+        const stripeCustomer = await Stripe.customers.create({
+          email: user.email,
+          name: user.name,
+          metadata: {
+            userId: user.id
           }
-        );
+        });
+        
+        // Update user with Stripe customer ID
+        await context.query.User.updateOne({
+          where: { id: user.id },
+          data: { stripeCustomerId: stripeCustomer.id }
+        });
+        user.stripeCustomerId = stripeCustomer.id;
+      }
 
+      // Find payment method
+      const paymentMethod = (await context.query.PaymentMethod.findOne({
+        where: { id: paymentMethodId },
+        query: "id stripeProcessorId stripePaymentMethodId"
+      })) as { id: string; stripeProcessorId: string; stripePaymentMethodId: string };
+      if (!paymentMethod) throw new Error("Payment method not found.");
+
+      // Attach payment method if applicable
+      if (noDuplicatePaymentMethod) {
+        await Stripe.paymentMethods.attach(paymentMethod.stripePaymentMethodId, {
+          customer: user.stripeCustomerId,
+        });
         await Stripe.customers.update(user.stripeCustomerId, {
           invoice_settings: {
             default_payment_method: paymentMethod.stripePaymentMethodId,
@@ -129,23 +185,22 @@ const resolver = {
         });
       }
 
-      const stripePaymentIntent = await Stripe.paymentIntents.create({
-        amount: Number(dataPayment.total) * 100,
-        currency: "mxn",
-        customer: user.stripeCustomerId,
-        payment_method: paymentMethod.stripePaymentMethodId,
-        description: `Payment for activity ${activity.name} (${dataPayment.activityId}) of ${activity.price}`,
-        confirm: true,
-        off_session: true,
-        metadata: {
-          paymentMethod: dataPayment.paymentMethodId,
-          activityId: dataPayment.activityId,
-          lodgingId: dataPayment.lodgingId,
-        }
+      // Create description
+      const activityNames = activities.map(activity => activity.name).join(", ");
+      const activityIdsStr = activities.map(activity => activity.id).join(",");
+
+      // Create PaymentIntent
+      const stripePaymentIntent = await createStripePaymentIntent({
+        total,
+        user,
+        paymentMethod,
+        activityNames,
+        activityIds: activityIdsStr,
+        lodgingId
       });
 
       if (stripePaymentIntent?.error) {
-        // In case payment error
+        // Record failed payment
         await context.query.Payment.createOne({
           data: {
             paymentMethod: 'card',
@@ -153,91 +208,52 @@ const resolver = {
             status: "failed",
             processorStripeChargeId: stripePaymentIntent?.id || "",
             stripeErrorMessage: stripePaymentIntent?.error?.message,
-            user: {
-              connect: {
-                id: user.id,
-              },
-            },
+            user: { connect: { id: user.id } },
           },
         });
-
         return {
           message: stripePaymentIntent?.error?.message,
           success: false,
         };
       }
 
+      // Record successful payment
       const payment = await context.query.Payment.createOne({
         data: {
-          paymentMethod: {
-            connect: {
-              id: dataPayment.paymentMethodId,
-            },
-          },
-          activity: {
-            connect: {
-              id: activity.id,
-            },
-          },
-          lodging: (lodging) ? {
-            connect: {
-              id: lodging.id,
-            },
-          } : undefined,
-          user: {
-            connect: {
-              id: user.id,
-            },
-          },
+          paymentMethod: { connect: { id: paymentMethodId } },
+          activity: { connect: activities.map(activity => ({ id: activity.id })) },
+          lodging: lodging ? { connect: { id: lodging.id } } : undefined,
+          user: { connect: { id: user.id } },
           amount: total,
           status: "succeeded",
           processorStripeChargeId: stripePaymentIntent?.id || "",
-          notes: dataPayment.notes
+          notes,
         },
       });
 
+      // Record booking
       const booking = await context.query.Booking.createOne({
         data: {
-          start_date: dataPayment.startDate,
-          end_date: dataPayment.endDate,
-          guests_adults: Number(dataPayment.guestss),
-          activity: {
-            connect: {
-              id: activity.id,
-            },
-          },
-          lodging: (lodging) ? {
-            connect: {
-              id: lodging.id,
-            },
-          } : undefined,
-          user: {
-            connect: {
-              id: user.id,
-            },
-          },
-          payment: {
-            connect: {
-              id: payment.id
-            }
-          },
+          start_date: startDate,
+          end_date: endDate,
+          guests_adults: Number(guestsCount),
+          activity: { connect: activities.map(activity => ({ id: activity.id })) },
+          lodging: lodging ? { connect: { id: lodging.id } } : undefined,
+          location: { connect: { id: locationId } },
+          user: { connect: { id: user.id } },
+          payment: { connect: { id: payment.id } },
           status: "paid",
         },
       });
 
       return {
-        message: "Pago y creación de reserva exitoso.",
+        message: "Payment and booking creation successful.",
         success: true,
-        data: {
-          booking: booking.id
-        }
+        data: { booking: booking.id },
       };
-
-    } catch (e) {
-      console.log("e");
-      console.log(e);
+    } catch (e: any) {
       return {
-        message: "Tuvimos problemas de comunicación con el servidor. Por favor intentelo de nuevo.",
+        message: (e && typeof e === 'object' && 'message' in e) ? e.message : "We had communication problems with the server. Please try again.",
         success: false,
       };
     }

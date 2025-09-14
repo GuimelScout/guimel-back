@@ -9,6 +9,7 @@ import {
 } from "@keystone-6/core/fields";
 import { bookingHooks } from "./Booking.hooks";
 import access from "./Booking.access";
+import { getBookingCode } from "../../utils/helpers/bookingCode";
 
 export default list({
   access,
@@ -18,7 +19,7 @@ export default list({
     end_date: calendarDay(),
     guests_adults:integer(),
     guests_childs:integer(),
-    guestss: virtual({
+    guestsCount: virtual({
       field: graphql.field({
         type: graphql.String,
         async resolve(item: any) {
@@ -30,12 +31,7 @@ export default list({
       field: graphql.field({
         type: graphql.String,
         async resolve(item: any) {
-          const fecha = new Date(item.createdAt);
-          const day = fecha.getDate().toString().padStart(2, '0');
-          const month = (fecha.getMonth() + 1).toString().padStart(2, '0');
-          const anio = fecha.getFullYear();
-          const fechaFormateada = `${day}${month}${anio}`;
-          return `${item.id.toString().slice(-6).toUpperCase()}-${fechaFormateada}`;
+          return getBookingCode(item);
         },
       }),
     }),
@@ -59,6 +55,9 @@ export default list({
     }),
     lodging: relationship({
       ref: "Lodging.booking",
+    }),
+    location: relationship({
+      ref: "Location.booking",
     }),
     user: relationship({
       ref: "User.booking",

@@ -750,12 +750,13 @@ type Booking {
   end_date: CalendarDay
   guests_adults: Int
   guests_childs: Int
-  guestss: String
+  guestsCount: String
   code: String
   status: BookingStatusType
   activity(where: ActivityWhereInput! = {}, orderBy: [ActivityOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ActivityWhereUniqueInput): [Activity!]
   activityCount(where: ActivityWhereInput! = {}): Int
   lodging: Lodging
+  location: Location
   user: User
   payment: Payment
   createdAt: DateTime
@@ -785,6 +786,7 @@ input BookingWhereInput {
   status: BookingStatusTypeNullableFilter
   activity: ActivityManyRelationFilter
   lodging: LodgingWhereInput
+  location: LocationWhereInput
   user: UserWhereInput
   payment: PaymentWhereInput
   createdAt: DateTimeNullableFilter
@@ -826,6 +828,7 @@ input BookingUpdateInput {
   status: BookingStatusType
   activity: ActivityRelateToManyForUpdateInput
   lodging: LodgingRelateToOneForUpdateInput
+  location: LocationRelateToOneForUpdateInput
   user: UserRelateToOneForUpdateInput
   payment: PaymentRelateToOneForUpdateInput
   createdAt: DateTime
@@ -834,6 +837,12 @@ input BookingUpdateInput {
 input LodgingRelateToOneForUpdateInput {
   create: LodgingCreateInput
   connect: LodgingWhereUniqueInput
+  disconnect: Boolean
+}
+
+input LocationRelateToOneForUpdateInput {
+  create: LocationCreateInput
+  connect: LocationWhereUniqueInput
   disconnect: Boolean
 }
 
@@ -856,6 +865,7 @@ input BookingCreateInput {
   status: BookingStatusType
   activity: ActivityRelateToManyForCreateInput
   lodging: LodgingRelateToOneForCreateInput
+  location: LocationRelateToOneForCreateInput
   user: UserRelateToOneForCreateInput
   payment: PaymentRelateToOneForCreateInput
   createdAt: DateTime
@@ -864,6 +874,11 @@ input BookingCreateInput {
 input LodgingRelateToOneForCreateInput {
   create: LodgingCreateInput
   connect: LodgingWhereUniqueInput
+}
+
+input LocationRelateToOneForCreateInput {
+  create: LocationCreateInput
+  connect: LocationWhereUniqueInput
 }
 
 input PaymentRelateToOneForCreateInput {
@@ -879,6 +894,8 @@ type Location {
   activityCount(where: ActivityWhereInput! = {}): Int
   lodging(where: LodgingWhereInput! = {}, orderBy: [LodgingOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LodgingWhereUniqueInput): [Lodging!]
   lodgingCount(where: LodgingWhereInput! = {}): Int
+  booking(where: BookingWhereInput! = {}, orderBy: [BookingOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BookingWhereUniqueInput): [Booking!]
+  bookingCount(where: BookingWhereInput! = {}): Int
   image: ImageFieldOutput
   link: String
   gallery(where: LocationGalleryWhereInput! = {}, orderBy: [LocationGalleryOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LocationGalleryWhereUniqueInput): [LocationGallery!]
@@ -900,6 +917,7 @@ input LocationWhereInput {
   description: StringFilter
   activity: ActivityManyRelationFilter
   lodging: LodgingManyRelationFilter
+  booking: BookingManyRelationFilter
   link: StringFilter
   gallery: LocationGalleryManyRelationFilter
   createdAt: DateTimeNullableFilter
@@ -924,6 +942,7 @@ input LocationUpdateInput {
   description: String
   activity: ActivityRelateToManyForUpdateInput
   lodging: LodgingRelateToManyForUpdateInput
+  booking: BookingRelateToManyForUpdateInput
   image: ImageFieldInput
   link: String
   gallery: LocationGalleryRelateToManyForUpdateInput
@@ -947,6 +966,7 @@ input LocationCreateInput {
   description: String
   activity: ActivityRelateToManyForCreateInput
   lodging: LodgingRelateToManyForCreateInput
+  booking: BookingRelateToManyForCreateInput
   image: ImageFieldInput
   link: String
   gallery: LocationGalleryRelateToManyForCreateInput
@@ -1349,7 +1369,8 @@ type Payment {
   stripeErrorMessage: String
   processorRefundId: String
   notes: String
-  activity: Activity
+  activity(where: ActivityWhereInput! = {}, orderBy: [ActivityOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ActivityWhereUniqueInput): [Activity!]
+  activityCount(where: ActivityWhereInput! = {}): Int
   lodging: Lodging
   user: User
   booking: Booking
@@ -1381,7 +1402,7 @@ input PaymentWhereInput {
   stripeErrorMessage: StringFilter
   processorRefundId: StringFilter
   notes: StringFilter
-  activity: ActivityWhereInput
+  activity: ActivityManyRelationFilter
   lodging: LodgingWhereInput
   user: UserWhereInput
   booking: BookingWhereInput
@@ -1414,7 +1435,7 @@ input PaymentUpdateInput {
   stripeErrorMessage: String
   processorRefundId: String
   notes: String
-  activity: ActivityRelateToOneForUpdateInput
+  activity: ActivityRelateToManyForUpdateInput
   lodging: LodgingRelateToOneForUpdateInput
   user: UserRelateToOneForUpdateInput
   booking: BookingRelateToOneForUpdateInput
@@ -1446,7 +1467,7 @@ input PaymentCreateInput {
   stripeErrorMessage: String
   processorRefundId: String
   notes: String
-  activity: ActivityRelateToOneForCreateInput
+  activity: ActivityRelateToManyForCreateInput
   lodging: LodgingRelateToOneForCreateInput
   user: UserRelateToOneForCreateInput
   booking: BookingRelateToOneForCreateInput
@@ -2000,7 +2021,7 @@ type Mutation {
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
-  makePayment(lodgingId: String, activityId: String!, startDate: CalendarDay!, endDate: CalendarDay!, guestss: String!, nameCard: String!, email: String!, notes: String!, paymentMethodId: String!, total: String!, noDuplicatePaymentMethod: Boolean!): makePaymentType
+  makePayment(lodgingId: String, locationId: String, activityIds: [String!]!, startDate: CalendarDay!, endDate: CalendarDay!, guestsCount: String!, nameCard: String!, email: String!, notes: String!, paymentMethodId: String!, total: String!, noDuplicatePaymentMethod: Boolean!): makePaymentType
 }
 
 union UserAuthenticationWithPasswordResult = UserAuthenticationWithPasswordSuccess | UserAuthenticationWithPasswordFailure

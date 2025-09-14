@@ -21,6 +21,10 @@ export default list({
       ref: "Lodging.location",
       many: true,
     }),
+    booking: relationship({
+      ref: "Booking.location",
+      many: true,
+    }),
     image: image({ storage: "s3_files" }),
     link: text({
           isIndexed: "unique",
