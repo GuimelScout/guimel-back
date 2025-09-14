@@ -1,7 +1,7 @@
 import { list } from "@keystone-6/core";
 import { timestamp, select, relationship } from "@keystone-6/core/fields";
-import access from "../../utils/generalAccess/access";
 import { role_options } from "./constants";
+import access from "./Role.access";
 
 export default list({
   access,

@@ -29,7 +29,7 @@ model Activity {
   review                Review[]               @relation("Review_activity")
   location              Location[]             @relation("Activity_location")
   gallery               ActivityGallery[]      @relation("Activity_gallery")
-  payment               Payment[]              @relation("Payment_activity")
+  payment               Payment[]              @relation("Activity_payment")
   link                  String                 @unique @default("")
   image_id              String?
   image_filesize        Int?
@@ -107,6 +107,8 @@ model Booking {
   activity      Activity[]        @relation("Activity_booking")
   lodging       Lodging?          @relation("Booking_lodging", fields: [lodgingId], references: [id])
   lodgingId     String?           @map("lodging")
+  location      Location?         @relation("Booking_location", fields: [locationId], references: [id])
+  locationId    String?           @map("location")
   user          User?             @relation("Booking_user", fields: [userId], references: [id])
   userId        String?           @map("user")
   payment       Payment?          @relation("Booking_payment", fields: [paymentId], references: [id])
@@ -114,6 +116,7 @@ model Booking {
   createdAt     DateTime?         @default(now())
 
   @@index([lodgingId])
+  @@index([locationId])
   @@index([userId])
 }
 
@@ -123,6 +126,7 @@ model Location {
   description     String            @default("")
   activity        Activity[]        @relation("Activity_location")
   lodging         Lodging[]         @relation("Location_lodging")
+  booking         Booking[]         @relation("Booking_location")
   image_id        String?
   image_filesize  Int?
   image_width     Int?
@@ -216,8 +220,7 @@ model Payment {
   stripeErrorMessage      String            @default("")
   processorRefundId       String            @default("")
   notes                   String            @default("")
-  activity                Activity?         @relation("Payment_activity", fields: [activityId], references: [id])
-  activityId              String?           @map("activity")
+  activity                Activity[]        @relation("Activity_payment")
   lodging                 Lodging?          @relation("Payment_lodging", fields: [lodgingId], references: [id])
   lodgingId               String?           @map("lodging")
   user                    User?             @relation("Payment_user", fields: [userId], references: [id])
@@ -227,7 +230,6 @@ model Payment {
   paymentMethodId         String?           @map("paymentMethod")
   createdAt               DateTime?         @default(now())
 
-  @@index([activityId])
   @@index([lodgingId])
   @@index([userId])
   @@index([paymentMethodId])
