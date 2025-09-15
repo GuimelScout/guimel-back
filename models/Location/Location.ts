@@ -27,14 +27,14 @@ export default list({
     }),
     image: image({ storage: "s3_files" }),
     link: text({
-          isIndexed: "unique",
-          hooks: linkHooks,
-          ui: {
-            createView: {
-              fieldMode: "hidden",
-            },
-          },
-        }),
+      isIndexed: "unique",
+      hooks: linkHooks,
+      ui: {
+        createView: {
+          fieldMode: "hidden",
+        },
+      },
+    }),
     gallery: relationship({
       ref: "LocationGallery.location",
       many: true,
