@@ -6,7 +6,7 @@ import {
   text,
 } from "@keystone-6/core/fields";
 import { reviewHooks } from "./Review.hooks";
-import access from "../../utils/generalAccess/access";
+import access from "./Review.access";
 
 export default list({
   access,
