@@ -1117,30 +1117,66 @@ var reviewHooks = {
   }
 };
 
-// utils/generalAccess/access.ts
+// models/Review/Review.access.ts
 var access7 = {
   operation: {
     query: ({ session: session2 }) => true,
-    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
-    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
-    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */])
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => !!session2,
+    delete: ({ session: session2 }) => !!session2
   },
   filter: {
     query: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
-    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */])
+    update: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["user" /* USER */, "hoster" /* HOSTER */])) {
+        return {
+          user: { id: { equals: session2?.itemId } }
+        };
+      }
+      return false;
+    },
+    delete: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["user" /* USER */, "hoster" /* HOSTER */])) {
+        return {
+          user: { id: { equals: session2?.itemId } }
+        };
+      }
+      return false;
+    }
   },
   item: {
-    create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
-    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */]),
-    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */, "user" /* USER */])
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2, item }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["user" /* USER */, "hoster" /* HOSTER */])) {
+        return item.user === session2?.itemId;
+      }
+      return false;
+    },
+    delete: ({ session: session2, item }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["user" /* USER */, "hoster" /* HOSTER */])) {
+        return item.user === session2?.itemId;
+      }
+      return false;
+    }
   }
 };
-var access_default = access7;
+var Review_access_default = access7;
 
 // models/Review/Review.ts
 var Review_default = (0, import_core10.list)({
-  access: access_default,
+  access: Review_access_default,
   hooks: reviewHooks,
   fields: {
     review: (0, import_fields10.text)(),
