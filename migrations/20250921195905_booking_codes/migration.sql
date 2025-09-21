@@ -10,7 +10,7 @@
 -- Step 1: Add enum value for reserved status
 ALTER TYPE "BookingStatusType" ADD VALUE IF NOT EXISTS 'reserved';
 
--- Step 2: Add commission fields with default values
+-- Step 2: Add commission fields with default values first
 ALTER TABLE "Activity" ADD COLUMN IF NOT EXISTS "commission_type" TEXT DEFAULT 'percentage';
 ALTER TABLE "Activity" ADD COLUMN IF NOT EXISTS "commission_value" DECIMAL(18,4) DEFAULT 15.00;
 
