@@ -2,6 +2,7 @@ import { graphql, list } from "@keystone-6/core";
 import { text, timestamp, relationship, image, select, virtual, decimal } from "@keystone-6/core/fields";
 import { linkHooks } from "./Lodging.hooks";
 import access from "./Lodging.access";
+import { calculateTotalPrice } from "../../utils/helpers/priceCalculation";
 
 export default list({
   access,
@@ -9,6 +10,29 @@ export default list({
     name: text({ validation: { isRequired: true } }),
     description: text({ ui: { displayMode: "textarea" } }),
     price: decimal(),
+    commission_type: select({
+      options: [
+        { label: "Precio Fijo", value: 'fixed' },
+        { label: "Porcentaje", value: 'percentage' }
+      ],
+      defaultValue: 'percentage',
+      validation: { isRequired: true }
+    }),
+    commission_value: decimal({
+      validation: { isRequired: true }
+    }),
+    total_price: virtual({
+      field: graphql.field({
+        type: graphql.Float,
+        async resolve(item: any) {
+          return calculateTotalPrice(
+            item.price,
+            item.commission_type,
+            item.commission_value
+          );
+        },
+      }),
+    }),
     status: select({
           options: [
             { label: "Disponible", value: 'available' },

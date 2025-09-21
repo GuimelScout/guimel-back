@@ -8,6 +8,9 @@ type Activity {
   descriptionActivities: Activity_descriptionActivities_Document
   address: String
   price: Decimal
+  commission_type: String
+  commission_value: Decimal
+  total_price: Float
   type_day: String
   is_available: Boolean
   reviewStar: Float
@@ -74,6 +77,8 @@ input ActivityWhereInput {
   description: StringFilter
   address: StringFilter
   price: DecimalNullableFilter
+  commission_type: StringFilter
+  commission_value: DecimalFilter
   type_day: StringFilter
   includes: ActivityIncludeManyRelationFilter
   whatToDo: ActivityWhatToDoManyRelationFilter
@@ -144,6 +149,17 @@ input DecimalNullableFilter {
   gt: Decimal
   gte: Decimal
   not: DecimalNullableFilter
+}
+
+input DecimalFilter {
+  equals: Decimal
+  in: [Decimal!]
+  notIn: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  gt: Decimal
+  gte: Decimal
+  not: DecimalFilter
 }
 
 input ActivityIncludeManyRelationFilter {
@@ -217,6 +233,8 @@ input ActivityOrderByInput {
   description: OrderDirection
   address: OrderDirection
   price: OrderDirection
+  commission_type: OrderDirection
+  commission_value: OrderDirection
   type_day: OrderDirection
   link: OrderDirection
   createdAt: OrderDirection
@@ -233,6 +251,8 @@ input ActivityUpdateInput {
   descriptionActivities: JSON
   address: String
   price: Decimal
+  commission_type: String
+  commission_value: Decimal
   type_day: String
   includes: ActivityIncludeRelateToManyForUpdateInput
   whatToDo: ActivityWhatToDoRelateToManyForUpdateInput
@@ -343,6 +363,8 @@ input ActivityCreateInput {
   descriptionActivities: JSON
   address: String
   price: Decimal
+  commission_type: String
+  commission_value: Decimal
   type_day: String
   includes: ActivityIncludeRelateToManyForCreateInput
   whatToDo: ActivityWhatToDoRelateToManyForCreateInput
@@ -752,6 +774,7 @@ type Booking {
   guests_childs: Int
   guestsCount: String
   code: String
+  payment_type: String
   status: BookingStatusType
   activity(where: ActivityWhereInput! = {}, orderBy: [ActivityOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ActivityWhereUniqueInput): [Activity!]
   activityCount(where: ActivityWhereInput! = {}): Int
@@ -765,6 +788,7 @@ type Booking {
 enum BookingStatusType {
   pending
   paid
+  reserved
   cancelled
   confirmed
   completed
@@ -772,6 +796,7 @@ enum BookingStatusType {
 
 input BookingWhereUniqueInput {
   id: ID
+  code: String
 }
 
 input BookingWhereInput {
@@ -783,6 +808,8 @@ input BookingWhereInput {
   end_date: CalendarDayNullableFilter
   guests_adults: IntNullableFilter
   guests_childs: IntNullableFilter
+  code: StringFilter
+  payment_type: StringFilter
   status: BookingStatusTypeNullableFilter
   activity: ActivityManyRelationFilter
   lodging: LodgingWhereInput
@@ -816,6 +843,8 @@ input BookingOrderByInput {
   end_date: OrderDirection
   guests_adults: OrderDirection
   guests_childs: OrderDirection
+  code: OrderDirection
+  payment_type: OrderDirection
   status: OrderDirection
   createdAt: OrderDirection
 }
@@ -825,6 +854,8 @@ input BookingUpdateInput {
   end_date: CalendarDay
   guests_adults: Int
   guests_childs: Int
+  code: String
+  payment_type: String
   status: BookingStatusType
   activity: ActivityRelateToManyForUpdateInput
   lodging: LodgingRelateToOneForUpdateInput
@@ -862,6 +893,8 @@ input BookingCreateInput {
   end_date: CalendarDay
   guests_adults: Int
   guests_childs: Int
+  code: String
+  payment_type: String
   status: BookingStatusType
   activity: ActivityRelateToManyForCreateInput
   lodging: LodgingRelateToOneForCreateInput
@@ -1031,6 +1064,9 @@ type Lodging {
   name: String
   description: String
   price: Decimal
+  commission_type: String
+  commission_value: Decimal
+  total_price: Float
   status: String
   type: String
   address: String
@@ -1072,6 +1108,8 @@ input LodgingWhereInput {
   name: StringFilter
   description: StringFilter
   price: DecimalNullableFilter
+  commission_type: StringFilter
+  commission_value: DecimalFilter
   status: StringFilter
   type: StringFilter
   address: StringFilter
@@ -1113,6 +1151,8 @@ input LodgingOrderByInput {
   name: OrderDirection
   description: OrderDirection
   price: OrderDirection
+  commission_type: OrderDirection
+  commission_value: OrderDirection
   status: OrderDirection
   type: OrderDirection
   address: OrderDirection
@@ -1126,6 +1166,8 @@ input LodgingUpdateInput {
   name: String
   description: String
   price: Decimal
+  commission_type: String
+  commission_value: Decimal
   status: String
   type: String
   address: String
@@ -1175,6 +1217,8 @@ input LodgingCreateInput {
   name: String
   description: String
   price: Decimal
+  commission_type: String
+  commission_value: Decimal
   status: String
   type: String
   address: String
@@ -2051,7 +2095,7 @@ type Mutation {
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
-  makePayment(lodgingId: String, locationId: String, activityIds: [String!]!, startDate: CalendarDay!, endDate: CalendarDay!, guestsCount: String!, nameCard: String!, email: String!, notes: String!, paymentMethodId: String!, total: String!, noDuplicatePaymentMethod: Boolean!): makePaymentType
+  makePayment(lodgingId: String, locationId: String, activityIds: [String!]!, startDate: CalendarDay!, endDate: CalendarDay!, guestsCount: String!, nameCard: String!, email: String!, notes: String!, paymentMethodId: String!, total: String!, noDuplicatePaymentMethod: Boolean!, paymentType: String!): makePaymentType
 }
 
 union UserAuthenticationWithPasswordResult = UserAuthenticationWithPasswordSuccess | UserAuthenticationWithPasswordFailure
