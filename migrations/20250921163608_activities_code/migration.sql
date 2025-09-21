@@ -11,7 +11,7 @@ ALTER TYPE "BookingStatusType" ADD VALUE 'reserved';
 
 -- AlterTable
 ALTER TABLE "Activity" ADD COLUMN     "commission_type" TEXT NOT NULL DEFAULT 'percentage',
-ADD COLUMN     "commission_value" DECIMAL(18,4) NOT NULL;
+ADD COLUMN     "commission_value" DECIMAL(18,4) NOT NULL DEFAULT '';
 
 -- AlterTable
 ALTER TABLE "Booking" ADD COLUMN     "code" TEXT NOT NULL DEFAULT '',
@@ -19,7 +19,7 @@ ADD COLUMN     "payment_type" TEXT NOT NULL DEFAULT 'full_payment';
 
 -- AlterTable
 ALTER TABLE "Lodging" ADD COLUMN     "commission_type" TEXT NOT NULL DEFAULT 'percentage',
-ADD COLUMN     "commission_value" DECIMAL(18,4) NOT NULL;
+ADD COLUMN     "commission_value" DECIMAL(18,4) NOT NULL DEFAULT '';
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Booking_code_key" ON "Booking"("code");
