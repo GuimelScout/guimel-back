@@ -18,6 +18,8 @@ model Activity {
   descriptionActivities Json                   @default("[{\"type\":\"paragraph\",\"children\":[{\"text\":\"\"}]}]")
   address               String                 @default("")
   price                 Decimal?               @postgresql.Decimal(18, 4)
+  commission_type       String                 @default("percentage")
+  commission_value      Decimal                @postgresql.Decimal(18, 4)
   type_day              String
   includes              ActivityInclude[]      @relation("Activity_includes")
   whatToDo              ActivityWhatToDo[]     @relation("Activity_whatToDo")
@@ -103,6 +105,8 @@ model Booking {
   end_date      DateTime?         @postgresql.Date
   guests_adults Int?
   guests_childs Int?
+  code          String            @unique @default("")
+  payment_type  String            @default("full_payment")
   status        BookingStatusType @default(pending)
   activity      Activity[]        @relation("Activity_booking")
   lodging       Lodging?          @relation("Booking_lodging", fields: [lodgingId], references: [id])
@@ -150,32 +154,34 @@ model LocationGallery {
 }
 
 model Lodging {
-  id             String           @id @default(cuid())
-  name           String           @default("")
-  description    String           @default("")
-  price          Decimal?         @postgresql.Decimal(18, 4)
-  status         String
-  type           String
-  address        String           @default("")
-  lat            String           @default("")
-  lng            String           @default("")
-  hostBy         User?            @relation("Lodging_hostBy", fields: [hostById], references: [id])
-  hostById       String?          @map("hostBy")
-  lodgingType    LodgingType[]    @relation("LodgingType_lodging")
-  activity       Activity[]       @relation("Activity_lodging")
-  payment        Payment[]        @relation("Payment_lodging")
-  booking        Booking[]        @relation("Booking_lodging")
-  review         Review[]         @relation("Review_lodging")
-  location       Location[]       @relation("Location_lodging")
-  link           String           @unique @default("")
-  gallery        LodgingGallery[] @relation("Lodging_gallery")
-  includes       LodgingInclude[] @relation("Lodging_includes")
-  logo_id        String?
-  logo_filesize  Int?
-  logo_width     Int?
-  logo_height    Int?
-  logo_extension String?
-  createdAt      DateTime?        @default(now())
+  id               String           @id @default(cuid())
+  name             String           @default("")
+  description      String           @default("")
+  price            Decimal?         @postgresql.Decimal(18, 4)
+  commission_type  String           @default("percentage")
+  commission_value Decimal          @postgresql.Decimal(18, 4)
+  status           String
+  type             String
+  address          String           @default("")
+  lat              String           @default("")
+  lng              String           @default("")
+  hostBy           User?            @relation("Lodging_hostBy", fields: [hostById], references: [id])
+  hostById         String?          @map("hostBy")
+  lodgingType      LodgingType[]    @relation("LodgingType_lodging")
+  activity         Activity[]       @relation("Activity_lodging")
+  payment          Payment[]        @relation("Payment_lodging")
+  booking          Booking[]        @relation("Booking_lodging")
+  review           Review[]         @relation("Review_lodging")
+  location         Location[]       @relation("Location_lodging")
+  link             String           @unique @default("")
+  gallery          LodgingGallery[] @relation("Lodging_gallery")
+  includes         LodgingInclude[] @relation("Lodging_includes")
+  logo_id          String?
+  logo_filesize    Int?
+  logo_width       Int?
+  logo_height      Int?
+  logo_extension   String?
+  createdAt        DateTime?        @default(now())
 
   @@index([hostById])
 }
@@ -317,6 +323,7 @@ model User {
 enum BookingStatusType {
   pending
   paid
+  reserved
   cancelled
   confirmed
   completed

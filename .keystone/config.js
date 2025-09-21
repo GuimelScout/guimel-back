@@ -123,6 +123,63 @@ var access = {
 };
 var Lodging_access_default = access;
 
+// utils/helpers/priceCalculation.ts
+function calculateTotalPrice(basePrice, commissionType, commissionValue) {
+  if (!basePrice || !commissionValue) return 0;
+  const price = parseFloat(basePrice.toString());
+  let commission = 0;
+  if (commissionType === "percentage") {
+    commission = price * (parseFloat(commissionValue.toString()) / 100);
+  } else {
+    commission = parseFloat(commissionValue.toString());
+  }
+  const totalWithCommission = parseFloat((price + commission).toFixed(2));
+  const totalPrice = totalWithCommission + calculateStripeFee(totalWithCommission);
+  console.log("totalPrice", totalPrice);
+  console.log("totalWithCommission", totalWithCommission);
+  console.log("commission", commission);
+  console.log("price", price);
+  console.log("commissionType", commissionType);
+  console.log("commissionValue", commissionValue);
+  console.log("stripeFee", calculateStripeFee(totalWithCommission));
+  return totalPrice;
+}
+function calculateStripeFee(amount) {
+  const amt = parseFloat(amount.toString());
+  return parseFloat((amt * 0.036 + 3).toFixed(2));
+}
+function calculatePaymentBreakdownWithGuests(basePrice, commissionType, commissionValue, paymentType, guestsCount) {
+  const pricePerGuest = parseFloat(basePrice.toString());
+  const totalBasePrice = pricePerGuest * guestsCount;
+  let commission = 0;
+  if (commissionType === "percentage") {
+    commission = totalBasePrice * (parseFloat(commissionValue.toString()) / 100);
+  } else {
+    commission = parseFloat(commissionValue.toString());
+  }
+  const totalPrice = totalBasePrice + commission;
+  const stripeFee = calculateStripeFee(totalPrice);
+  if (paymentType === "full_payment") {
+    return {
+      payNow: parseFloat((totalPrice + stripeFee).toFixed(2)),
+      payAtProperty: 0,
+      basePrice: parseFloat(totalBasePrice.toFixed(2)),
+      commission: parseFloat(commission.toFixed(2)),
+      stripeFee: parseFloat(stripeFee.toFixed(2)),
+      totalCommission: parseFloat((commission + stripeFee).toFixed(2))
+    };
+  } else {
+    return {
+      payNow: parseFloat((commission + stripeFee).toFixed(2)),
+      payAtProperty: parseFloat(totalBasePrice.toFixed(2)),
+      basePrice: parseFloat(totalBasePrice.toFixed(2)),
+      commission: parseFloat(commission.toFixed(2)),
+      stripeFee: parseFloat(stripeFee.toFixed(2)),
+      totalCommission: parseFloat((commission + stripeFee).toFixed(2))
+    };
+  }
+}
+
 // models/Lodging/Lodging.ts
 var Lodging_default = (0, import_core.list)({
   access: Lodging_access_default,
@@ -130,6 +187,29 @@ var Lodging_default = (0, import_core.list)({
     name: (0, import_fields.text)({ validation: { isRequired: true } }),
     description: (0, import_fields.text)({ ui: { displayMode: "textarea" } }),
     price: (0, import_fields.decimal)(),
+    commission_type: (0, import_fields.select)({
+      options: [
+        { label: "Precio Fijo", value: "fixed" },
+        { label: "Porcentaje", value: "percentage" }
+      ],
+      defaultValue: "percentage",
+      validation: { isRequired: true }
+    }),
+    commission_value: (0, import_fields.decimal)({
+      validation: { isRequired: true }
+    }),
+    total_price: (0, import_fields.virtual)({
+      field: import_core.graphql.field({
+        type: import_core.graphql.Float,
+        async resolve(item) {
+          return calculateTotalPrice(
+            item.price,
+            item.commission_type,
+            item.commission_value
+          );
+        }
+      })
+    }),
     status: (0, import_fields.select)({
       options: [
         { label: "Disponible", value: "available" },
@@ -568,6 +648,29 @@ var Activity_default = (0, import_core4.list)({
     }),
     address: (0, import_fields4.text)({ ui: { displayMode: "textarea", description: 'You must add the address like: "street, zip neighborhood state country"' } }),
     price: (0, import_fields4.decimal)(),
+    commission_type: (0, import_fields4.select)({
+      options: [
+        { label: "Precio Fijo", value: "fixed" },
+        { label: "Porcentaje", value: "percentage" }
+      ],
+      defaultValue: "percentage",
+      validation: { isRequired: true }
+    }),
+    commission_value: (0, import_fields4.decimal)({
+      validation: { isRequired: true }
+    }),
+    total_price: (0, import_fields4.virtual)({
+      field: import_core4.graphql.field({
+        type: import_core4.graphql.Float,
+        async resolve(item) {
+          return calculateTotalPrice(
+            item.price,
+            item.commission_type,
+            item.commission_value
+          );
+        }
+      })
+    }),
     type_day: (0, import_fields4.select)({
       options: [
         { label: "Un d\xEDa", value: "one_day" },
@@ -875,9 +978,10 @@ function getBookingCode(item) {
   const fecha = new Date(item.createdAt);
   const day = fecha.getDate().toString().padStart(2, "0");
   const month = (fecha.getMonth() + 1).toString().padStart(2, "0");
-  const anio = fecha.getFullYear();
+  const anio = fecha.getFullYear() % 100;
   const fechaFormateada = `${day}${month}${anio}`;
-  return `${item.id.toString().slice(-6).toUpperCase()}-${fechaFormateada}`;
+  const idCode = item.id ? item.id.toString().slice(-6).toUpperCase() : Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `${idCode}-${fechaFormateada}`;
 }
 
 // utils/helpers/generate_password.ts
@@ -942,6 +1046,11 @@ async function sendConfirmationSMS(booking) {
 var bookingHooks = {
   afterOperation: async ({ operation, item, context }) => {
     if (operation === "create") {
+      const code = getBookingCode({ id: item.id, createdAt: item.createdAt });
+      await context.db.Booking.updateOne({
+        where: { id: item.id },
+        data: { code }
+      });
       const [user, activities, location] = await Promise.all([
         context.db.User.findOne({
           where: { id: item.userId },
@@ -1050,13 +1159,21 @@ var Booking_default = (0, import_core9.list)({
         }
       })
     }),
-    code: (0, import_fields9.virtual)({
-      field: import_core9.graphql.field({
-        type: import_core9.graphql.String,
-        async resolve(item) {
-          return getBookingCode(item);
+    code: (0, import_fields9.text)({
+      isIndexed: "unique",
+      ui: {
+        createView: {
+          fieldMode: "hidden"
         }
-      })
+      }
+    }),
+    payment_type: (0, import_fields9.select)({
+      options: [
+        { label: "Pago Completo", value: "full_payment" },
+        { label: "Solo Comisi\xF3n", value: "commission_only" }
+      ],
+      validation: { isRequired: true },
+      defaultValue: "full_payment"
     }),
     status: (0, import_fields9.select)({
       type: "enum",
@@ -1067,6 +1184,7 @@ var Booking_default = (0, import_core9.list)({
       options: [
         { label: "Pendiente", value: "pending" },
         { label: "Pagado", value: "paid" },
+        { label: "Reservado", value: "reserved" },
         { label: "Cancelado", value: "cancelled" },
         { label: "Confirmado", value: "confirmed" },
         { label: "Completado", value: "completed" }
@@ -1703,10 +1821,11 @@ var definition = `
   notes: String!, 
   paymentMethodId: String!, 
   total: String!, 
-  noDuplicatePaymentMethod: Boolean!, 
+  noDuplicatePaymentMethod: Boolean!,
+  paymentType: String!
   ): makePaymentType
 `;
-function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total }) {
+function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType }) {
   if (!activityIds || !Array.isArray(activityIds) || activityIds.length === 0) {
     throw new Error("At least one activity must be selected.");
   }
@@ -1717,20 +1836,61 @@ function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, e
   if (!email) throw new Error("Email is required.");
   if (!paymentMethodId) throw new Error("Payment method is required.");
   if (!total || isNaN(Number(total)) || Number(total) <= 0) throw new Error("Total must be greater than 0.");
+  if (!paymentType || !["full_payment", "commission_only"].includes(paymentType)) {
+    throw new Error("Payment type must be 'full_payment' or 'commission_only'.");
+  }
 }
-function calculateTotal(activities, lodging, guestsCount) {
+function calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType) {
   let total = 0;
-  activities.forEach((activity) => {
-    total += parseFloat(activity.price || "0.00") * Number(guestsCount);
+  const guests = Number(guestsCount);
+  console.log("\u{1F50D} DEBUG - calculateTotalWithCommissions:");
+  console.log("Guests:", guests);
+  console.log("Payment Type:", paymentType);
+  activities.forEach((activity, index) => {
+    console.log(`
+--- Activity ${index + 1}: ${activity.name} ---`);
+    console.log("Price per guest:", activity.price);
+    console.log("Commission Type:", activity.commission_type);
+    console.log("Commission Value:", activity.commission_value);
+    const breakdown = calculatePaymentBreakdownWithGuests(
+      activity.price,
+      activity.commission_type,
+      activity.commission_value,
+      paymentType,
+      guests
+    );
+    console.log("Breakdown:", breakdown);
+    console.log("Pay Now total:", breakdown.payNow);
+    total += breakdown.payNow;
   });
   if (lodging) {
-    total += parseFloat(lodging.price || "0.00") * Number(guestsCount);
+    console.log(`
+--- Lodging: ${lodging.name} ---`);
+    console.log("Price per guest:", lodging.price);
+    console.log("Commission Type:", lodging.commission_type);
+    console.log("Commission Value:", lodging.commission_value);
+    const breakdown = calculatePaymentBreakdownWithGuests(
+      lodging.price,
+      lodging.commission_type,
+      lodging.commission_value,
+      paymentType,
+      guests
+    );
+    console.log("Breakdown:", breakdown);
+    console.log("Pay Now total:", breakdown.payNow);
+    total += breakdown.payNow;
   }
+  console.log("\n--- FINAL TOTAL ---");
+  console.log("Total:", total);
   return total;
 }
 async function createStripePaymentIntent({ total, user, paymentMethod, activityNames, activityIds, lodgingId }) {
+  const amountInCents = Math.round(Number(total) * 100);
+  console.log("\u{1F50D} DEBUG - Stripe Payment Intent:");
+  console.log("Total (MXN):", total);
+  console.log("Amount in cents:", amountInCents);
   return await stripe_default.paymentIntents.create({
-    amount: Number(total) * 100,
+    amount: amountInCents,
     currency: "mxn",
     customer: user.stripeCustomerId,
     payment_method: paymentMethod.stripePaymentMethodId,
@@ -1757,27 +1917,49 @@ var resolver = {
     notes,
     paymentMethodId,
     total,
-    noDuplicatePaymentMethod
+    noDuplicatePaymentMethod,
+    paymentType
   }, context) => {
     try {
-      validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total });
+      validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType });
       const activities = await context.query.Activity.findMany({
         where: { id: { in: activityIds } },
-        query: "id name price"
+        query: "id name price commission_type commission_value"
       });
       if (!activities || activities.length === 0) throw new Error("No valid activities found.");
       let lodging = void 0;
       if (lodgingId) {
         lodging = await context.query.Lodging.findOne({
           where: { id: lodgingId },
-          query: "id name price"
+          query: "id name price commission_type commission_value"
         });
         if (!lodging) throw new Error("Selected lodging not found.");
       }
-      const totalInBack = calculateTotal(activities, lodging, guestsCount);
-      if (Number(total) !== totalInBack) {
+      const totalInBack = calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType);
+      const roundedTotalInBack = parseFloat(totalInBack.toFixed(2));
+      const roundedFrontendTotal = parseFloat(Number(total).toFixed(2));
+      console.log("\u{1F50D} DEBUG - Payment Calculation:");
+      console.log("Activities:", activities.map((a) => ({
+        name: a.name,
+        price: a.price,
+        commission_type: a.commission_type,
+        commission_value: a.commission_value
+      })));
+      console.log("Lodging:", lodging ? {
+        name: lodging.name,
+        price: lodging.price,
+        commission_type: lodging.commission_type,
+        commission_value: lodging.commission_value
+      } : "None");
+      console.log("Guests Count:", guestsCount);
+      console.log("Payment Type:", paymentType);
+      console.log("Frontend Total:", total);
+      console.log("Backend Total (raw):", totalInBack);
+      console.log("Frontend Total (rounded):", roundedFrontendTotal);
+      console.log("Backend Total (rounded):", roundedTotalInBack);
+      if (roundedFrontendTotal !== roundedTotalInBack) {
         return {
-          message: "Communication error, please reload the page and try again.",
+          message: `Communication error: Frontend total (${roundedFrontendTotal}) doesn't match backend total (${roundedTotalInBack}). Please reload the page and try again.`,
           success: false
         };
       }
@@ -1817,8 +1999,9 @@ var resolver = {
       }
       const activityNames = activities.map((activity) => activity.name).join(", ");
       const activityIdsStr = activities.map((activity) => activity.id).join(",");
+      const roundedTotal = roundedTotalInBack.toString();
       const stripePaymentIntent = await createStripePaymentIntent({
-        total,
+        total: roundedTotal,
         user,
         paymentMethod,
         activityNames,
@@ -1829,7 +2012,7 @@ var resolver = {
         await context.query.Payment.createOne({
           data: {
             paymentMethod: "card",
-            amount: total,
+            amount: roundedTotal,
             status: "failed",
             processorStripeChargeId: stripePaymentIntent?.id || "",
             stripeErrorMessage: stripePaymentIntent?.error?.message,
@@ -1847,23 +2030,25 @@ var resolver = {
           activity: { connect: activities.map((activity) => ({ id: activity.id })) },
           lodging: lodging ? { connect: { id: lodging.id } } : void 0,
           user: { connect: { id: user.id } },
-          amount: total,
+          amount: roundedTotal,
           status: "succeeded",
           processorStripeChargeId: stripePaymentIntent?.id || "",
           notes
         }
       });
+      const bookingStatus = paymentType === "full_payment" ? "paid" : "reserved";
       const booking = await context.query.Booking.createOne({
         data: {
           start_date: startDate,
           end_date: endDate,
           guests_adults: Number(guestsCount),
+          payment_type: paymentType,
           activity: { connect: activities.map((activity) => ({ id: activity.id })) },
           lodging: lodging ? { connect: { id: lodging.id } } : void 0,
           location: { connect: { id: locationId } },
           user: { connect: { id: user.id } },
           payment: { connect: { id: payment.id } },
-          status: "paid"
+          status: bookingStatus
         }
       });
       return {

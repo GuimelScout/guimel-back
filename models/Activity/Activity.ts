@@ -11,6 +11,7 @@ import {
 import { linkHooks } from "./Activity.hooks";
 import { document } from '@keystone-6/fields-document';
 import access from "./Activity.access";
+import { calculateTotalPrice } from "../../utils/helpers/priceCalculation";
 
 export default list({
   access,
@@ -23,6 +24,29 @@ export default list({
     }),
     address: text({ ui: { displayMode: "textarea",description:'You must add the address like: "street, zip neighborhood state country"' } }),
     price: decimal(),
+    commission_type: select({
+      options: [
+        { label: "Precio Fijo", value: 'fixed' },
+        { label: "Porcentaje", value: 'percentage' }
+      ],
+      defaultValue: 'percentage',
+      validation: { isRequired: true }
+    }),
+    commission_value: decimal({
+      validation: { isRequired: true }
+    }),
+    total_price: virtual({
+      field: graphql.field({
+        type: graphql.Float,
+        async resolve(item: any) {
+          return calculateTotalPrice(
+            item.price,
+            item.commission_type,
+            item.commission_value
+          );
+        },
+      }),
+    }),
     type_day: select({
       options: [
         { label: "Un día", value: 'one_day' },

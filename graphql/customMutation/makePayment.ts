@@ -1,5 +1,6 @@
 import { KeystoneContext } from "@keystone-6/core/types";
 import Stripe from "../../integrations/stripe";
+import { calculatePaymentBreakdownWithGuests } from "../../utils/helpers/priceCalculation";
 
 const typeDefs = `
   type makePaymentType {
@@ -22,7 +23,8 @@ const definition = `
   notes: String!, 
   paymentMethodId: String!, 
   total: String!, 
-  noDuplicatePaymentMethod: Boolean!, 
+  noDuplicatePaymentMethod: Boolean!,
+  paymentType: String!
   ): makePaymentType
 `;
 
@@ -38,9 +40,10 @@ type PaymentInput = {
   email: string;
   paymentMethodId: string;
   total: string;
+  paymentType: string;
 };
 
-function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total }: PaymentInput) {
+function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType }: PaymentInput) {
   if (!activityIds || !Array.isArray(activityIds) || activityIds.length === 0) {
     throw new Error("At least one activity must be selected.");
   }
@@ -51,19 +54,61 @@ function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, e
   if (!email) throw new Error("Email is required.");
   if (!paymentMethodId) throw new Error("Payment method is required.");
   if (!total || isNaN(Number(total)) || Number(total) <= 0) throw new Error("Total must be greater than 0.");
+  if (!paymentType || !['full_payment', 'commission_only'].includes(paymentType)) {
+    throw new Error("Payment type must be 'full_payment' or 'commission_only'.");
+  }
 }
 
-type Activity = { id: string; name: string; price: string };
-type Lodging = { id: string; name: string; price: string } | undefined;
+type Activity = { 
+  id: string; 
+  name: string; 
+  price: string; 
+  commission_type: string; 
+  commission_value: string; 
+};
+type Lodging = { 
+  id: string; 
+  name: string; 
+  price: string; 
+  commission_type: string; 
+  commission_value: string; 
+} | undefined;
 
-function calculateTotal(activities: Activity[], lodging: Lodging, guestsCount: string): number {
+function calculateTotalWithCommissions(
+  activities: Activity[], 
+  lodging: Lodging, 
+  guestsCount: string, 
+  paymentType: string
+): number {
   let total = 0;
-  activities.forEach((activity: Activity) => {
-    total += parseFloat(activity.price || "0.00") * Number(guestsCount);
+  const guests = Number(guestsCount);
+  
+  // Calculate activities total
+  activities.forEach((activity: Activity, index: number) => {
+    const breakdown = calculatePaymentBreakdownWithGuests(
+      activity.price,
+      activity.commission_type,
+      activity.commission_value,
+      paymentType,
+      guests
+    );
+    
+    total += breakdown.payNow;
   });
+  
+  // Calculate lodging total
   if (lodging) {
-    total += parseFloat(lodging.price || "0.00") * Number(guestsCount);
+    const breakdown = calculatePaymentBreakdownWithGuests(
+      lodging.price,
+      lodging.commission_type,
+      lodging.commission_value,
+      paymentType,
+      guests
+    );
+    
+    total += breakdown.payNow;
   }
+  
   return total;
 }
 
@@ -77,8 +122,11 @@ type StripePaymentIntentParams = {
 };
 
 async function createStripePaymentIntent({ total, user, paymentMethod, activityNames, activityIds, lodgingId }: StripePaymentIntentParams) {
+  // Convert to cents and round to avoid floating point issues
+  const amountInCents = Math.round(Number(total) * 100);
+  
   return await Stripe.paymentIntents.create({
-    amount: Number(total) * 100,
+    amount: amountInCents,
     currency: "mxn",
     customer: user.stripeCustomerId,
     payment_method: paymentMethod.stripePaymentMethodId,
@@ -109,34 +157,41 @@ const resolver = {
       paymentMethodId,
       total,
       noDuplicatePaymentMethod,
+      paymentType,
     }: PaymentInput & { notes: string; noDuplicatePaymentMethod: boolean },
     context: KeystoneContext,
   ) => {
     try {
       // Input validation
-      validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total });
+      validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType });
 
-      // Find activities
+      // Find activities with commission data
       const activities = (await context.query.Activity.findMany({
         where: { id: { in: activityIds } },
-        query: "id name price"
+        query: "id name price commission_type commission_value"
       })) as Activity[];
       if (!activities || activities.length === 0) throw new Error("No valid activities found.");
 
-      // Find lodging if applicable
+      // Find lodging if applicable with commission data
       let lodging: Lodging = undefined;
       if (lodgingId) {
         lodging = (await context.query.Lodging.findOne({
           where: { id: lodgingId },
-          query: "id name price",
+          query: "id name price commission_type commission_value",
         })) as Lodging;
         if (!lodging) throw new Error("Selected lodging not found.");
       }
-      // Calculate total in backend
-      const totalInBack = calculateTotal(activities, lodging, guestsCount);
-      if (Number(total) !== totalInBack) {
+      
+      // Calculate total in backend with commissions
+      const totalInBack = calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType);
+      
+      // Round to 2 decimal places to avoid floating point precision issues
+      const roundedTotalInBack = parseFloat(totalInBack.toFixed(2));
+      const roundedFrontendTotal = parseFloat(Number(total).toFixed(2));
+      
+      if (roundedFrontendTotal !== roundedTotalInBack) {
         return {
-          message: "Communication error, please reload the page and try again.",
+          message: `Communication error, please reload the page and try again.`,
           success: false,
         };
       }
@@ -189,9 +244,10 @@ const resolver = {
       const activityNames = activities.map(activity => activity.name).join(", ");
       const activityIdsStr = activities.map(activity => activity.id).join(",");
 
-      // Create PaymentIntent
+      // Create PaymentIntent with rounded total
+      const roundedTotal = roundedTotalInBack.toString();
       const stripePaymentIntent = await createStripePaymentIntent({
-        total,
+        total: roundedTotal,
         user,
         paymentMethod,
         activityNames,
@@ -204,7 +260,7 @@ const resolver = {
         await context.query.Payment.createOne({
           data: {
             paymentMethod: 'card',
-            amount: total,
+            amount: roundedTotal,
             status: "failed",
             processorStripeChargeId: stripePaymentIntent?.id || "",
             stripeErrorMessage: stripePaymentIntent?.error?.message,
@@ -224,25 +280,27 @@ const resolver = {
           activity: { connect: activities.map(activity => ({ id: activity.id })) },
           lodging: lodging ? { connect: { id: lodging.id } } : undefined,
           user: { connect: { id: user.id } },
-          amount: total,
+          amount: roundedTotal,
           status: "succeeded",
           processorStripeChargeId: stripePaymentIntent?.id || "",
           notes,
         },
       });
 
-      // Record booking
+      // Record booking with payment type and appropriate status
+      const bookingStatus = paymentType === 'full_payment' ? 'paid' : 'reserved';
       const booking = await context.query.Booking.createOne({
         data: {
           start_date: startDate,
           end_date: endDate,
           guests_adults: Number(guestsCount),
+          payment_type: paymentType,
           activity: { connect: activities.map(activity => ({ id: activity.id })) },
           lodging: lodging ? { connect: { id: lodging.id } } : undefined,
           location: { connect: { id: locationId } },
           user: { connect: { id: user.id } },
           payment: { connect: { id: payment.id } },
-          status: "paid",
+          status: bookingStatus,
         },
       });
 

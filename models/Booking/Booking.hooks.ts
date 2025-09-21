@@ -1,9 +1,15 @@
 import { sendConfirmationEmail, sendConfirmationSMS } from "../../utils/notification";
+import { getBookingCode } from "../../utils/helpers/bookingCode";
 
 export const bookingHooks = {
-    
     afterOperation: async ({ operation, item, context }: any) => {
       if (operation === 'create') {
+        const code = getBookingCode({ id: item.id, createdAt: item.createdAt });
+        
+        await context.db.Booking.updateOne({
+          where: { id: item.id },
+          data: { code: code }
+        });
 
         const [user, activities, location] = await Promise.all([
           context.db.User.findOne({

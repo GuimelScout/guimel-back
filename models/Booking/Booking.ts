@@ -6,6 +6,7 @@ import {
   integer,
   virtual,
   select,
+  text,
 } from "@keystone-6/core/fields";
 import { bookingHooks } from "./Booking.hooks";
 import access from "./Booking.access";
@@ -27,13 +28,21 @@ export default list({
         },
       }),
     }),
-    code: virtual({
-      field: graphql.field({
-        type: graphql.String,
-        async resolve(item: any) {
-          return getBookingCode(item);
+    code: text({
+      isIndexed: "unique",
+      ui: {
+        createView: {
+          fieldMode: "hidden",
         },
-      }),
+      },
+    }),
+    payment_type: select({
+      options: [
+        { label: "Pago Completo", value: 'full_payment' },
+        { label: "Solo Comisión", value: 'commission_only' }
+      ],
+      validation: { isRequired: true },
+      defaultValue: 'full_payment'
     }),
     status: select({
       type: "enum",
@@ -44,6 +53,7 @@ export default list({
       options: [
         { label: "Pendiente", value: "pending" },
         { label: "Pagado", value: "paid" },
+        { label: "Reservado", value: "reserved" },
         { label: "Cancelado", value: "cancelled" },
         { label: "Confirmado", value: "confirmed" },
         { label: "Completado", value: "completed" },
