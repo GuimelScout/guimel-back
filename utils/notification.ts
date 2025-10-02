@@ -59,3 +59,63 @@ export async function sendConfirmationSMS(booking: any) {
     console.error('Error al enviar SMS:', error);
   }
 }
+
+export async function sendContactNotificationToAdmins(contact: any, context: any) {
+  try {
+    // Get all admin users
+    const adminUsers = await context.db.User.findMany({
+      where: { 
+        role: { 
+          some: { 
+            name: { equals: "admin" } 
+          } 
+        } 
+      },
+      query: 'id name lastName email'
+    });
+
+    if (adminUsers.length === 0) {
+      console.log('No admin users found to notify');
+      return;
+    }
+
+    // Send email to each admin user
+    const emailPromises = adminUsers.map(async (admin: any) => {
+      const msg = {
+        to: admin.email,
+        from: process.env.SENDGRID_FROM_EMAIL as string,
+        subject: 'Nuevo mensaje de contacto recibido',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Nuevo mensaje de contacto</h2>
+            <p>Hola ${admin.name},</p>
+            <p>Se ha recibido un nuevo mensaje de contacto en la plataforma:</p>
+            
+            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #555;">Detalles del mensaje:</h3>
+              <p><strong>Nombre:</strong> ${contact.name}</p>
+              <p><strong>Email:</strong> ${contact.email}</p>
+              <p><strong>Teléfono:</strong> ${contact.phone || 'No proporcionado'}</p>
+              <p><strong>Fecha:</strong> ${new Date(contact.createdAt).toLocaleString()}</p>
+              <p><strong>Mensaje:</strong></p>
+              <div style="background-color: white; padding: 15px; border-left: 4px solid #007bff; margin-top: 10px;">
+                ${contact.message}
+              </div>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">
+              Este es un mensaje automático del sistema de Guimel.
+            </p>
+          </div>
+        `,
+      };
+
+      return sgMail.send(msg);
+    });
+
+    await Promise.all(emailPromises);
+    console.log(`Contact notification sent to ${adminUsers.length} admin users`);
+  } catch (error) {
+    console.error('Error sending contact notification to admins:', error);
+  }
+}
