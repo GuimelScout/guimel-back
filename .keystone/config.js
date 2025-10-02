@@ -135,13 +135,6 @@ function calculateTotalPrice(basePrice, commissionType, commissionValue) {
   }
   const totalWithCommission = parseFloat((price + commission).toFixed(2));
   const totalPrice = totalWithCommission + calculateStripeFee(totalWithCommission);
-  console.log("totalPrice", totalPrice);
-  console.log("totalWithCommission", totalWithCommission);
-  console.log("commission", commission);
-  console.log("price", price);
-  console.log("commissionType", commissionType);
-  console.log("commissionValue", commissionValue);
-  console.log("stripeFee", calculateStripeFee(totalWithCommission));
   return totalPrice;
 }
 function calculateStripeFee(amount) {
@@ -1041,6 +1034,59 @@ async function sendConfirmationSMS(booking) {
     console.error("Error al enviar SMS:", error);
   }
 }
+async function sendContactNotificationToAdmins(contact, context) {
+  try {
+    const adminUsers = await context.db.User.findMany({
+      where: {
+        role: {
+          some: {
+            name: { equals: "admin" }
+          }
+        }
+      },
+      query: "id name lastName email"
+    });
+    if (adminUsers.length === 0) {
+      console.log("No admin users found to notify");
+      return;
+    }
+    const emailPromises = adminUsers.map(async (admin) => {
+      const msg = {
+        to: admin.email,
+        from: process.env.SENDGRID_FROM_EMAIL,
+        subject: "Nuevo mensaje de contacto recibido",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Nuevo mensaje de contacto</h2>
+            <p>Hola ${admin.name},</p>
+            <p>Se ha recibido un nuevo mensaje de contacto en la plataforma:</p>
+            
+            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #555;">Detalles del mensaje:</h3>
+              <p><strong>Nombre:</strong> ${contact.name}</p>
+              <p><strong>Email:</strong> ${contact.email}</p>
+              <p><strong>Tel\xE9fono:</strong> ${contact.phone || "No proporcionado"}</p>
+              <p><strong>Fecha:</strong> ${new Date(contact.createdAt).toLocaleString()}</p>
+              <p><strong>Mensaje:</strong></p>
+              <div style="background-color: white; padding: 15px; border-left: 4px solid #007bff; margin-top: 10px;">
+                ${contact.message}
+              </div>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">
+              Este es un mensaje autom\xE1tico del sistema de Guimel.
+            </p>
+          </div>
+        `
+      };
+      return import_mail.default.send(msg);
+    });
+    await Promise.all(emailPromises);
+    console.log(`Contact notification sent to ${adminUsers.length} admin users`);
+  } catch (error) {
+    console.error("Error sending contact notification to admins:", error);
+  }
+}
 
 // models/Booking/Booking.hooks.ts
 var bookingHooks = {
@@ -1739,6 +1785,65 @@ var Role_default = (0, import_core18.list)({
   }
 });
 
+// models/Contact/Contact.ts
+var import_core19 = require("@keystone-6/core");
+var import_fields19 = require("@keystone-6/core/fields");
+
+// models/Contact/Contact.hooks.ts
+var contactHooks = {
+  afterOperation: async ({ operation, item, context }) => {
+    if (operation === "create") {
+      try {
+        await sendContactNotificationToAdmins(item, context);
+      } catch (error) {
+        console.error("Error sending contact notification to admins:", error);
+      }
+    }
+  }
+};
+
+// models/Contact/Contact.access.ts
+var access12 = {
+  operation: {
+    query: ({ session: session2 }) => hasRole(session2, ["admin" /* ADMIN */]),
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2 }) => hasRole(session2, ["admin" /* ADMIN */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["admin" /* ADMIN */])
+  },
+  filter: {
+    query: ({ session: session2 }) => hasRole(session2, ["admin" /* ADMIN */]),
+    update: ({ session: session2 }) => hasRole(session2, ["admin" /* ADMIN */]),
+    delete: ({ session: session2 }) => hasRole(session2, ["admin" /* ADMIN */])
+  },
+  item: {
+    create: ({ session: session2 }) => true,
+    update: ({ session: session2, item }) => hasRole(session2, ["admin" /* ADMIN */]),
+    delete: ({ session: session2, item }) => hasRole(session2, ["admin" /* ADMIN */])
+  }
+};
+var Contact_access_default = access12;
+
+// models/Contact/Contact.ts
+var Contact_default = (0, import_core19.list)({
+  access: Contact_access_default,
+  hooks: contactHooks,
+  fields: {
+    name: (0, import_fields19.text)(),
+    email: (0, import_fields19.text)(),
+    phone: (0, import_fields19.text)(),
+    message: (0, import_fields19.text)({ ui: { displayMode: "textarea" } }),
+    createdAt: (0, import_fields19.timestamp)({
+      defaultValue: {
+        kind: "now"
+      },
+      ui: {
+        createView: { fieldMode: "hidden" },
+        itemView: { fieldMode: "read" }
+      }
+    })
+  }
+});
+
 // models/schema.ts
 var schema_default = {
   Activity: Activity_default,
@@ -1758,11 +1863,12 @@ var schema_default = {
   PaymentMethod: PaymentMethod_default,
   Review: Review_default,
   Role: Role_default,
-  User: User_default
+  User: User_default,
+  Contact: Contact_default
 };
 
 // keystone.ts
-var import_core19 = require("@keystone-6/core");
+var import_core20 = require("@keystone-6/core");
 
 // auth/auth.ts
 var import_crypto = require("crypto");
@@ -1843,15 +1949,7 @@ function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, e
 function calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType) {
   let total = 0;
   const guests = Number(guestsCount);
-  console.log("\u{1F50D} DEBUG - calculateTotalWithCommissions:");
-  console.log("Guests:", guests);
-  console.log("Payment Type:", paymentType);
   activities.forEach((activity, index) => {
-    console.log(`
---- Activity ${index + 1}: ${activity.name} ---`);
-    console.log("Price per guest:", activity.price);
-    console.log("Commission Type:", activity.commission_type);
-    console.log("Commission Value:", activity.commission_value);
     const breakdown = calculatePaymentBreakdownWithGuests(
       activity.price,
       activity.commission_type,
@@ -1859,16 +1957,9 @@ function calculateTotalWithCommissions(activities, lodging, guestsCount, payment
       paymentType,
       guests
     );
-    console.log("Breakdown:", breakdown);
-    console.log("Pay Now total:", breakdown.payNow);
     total += breakdown.payNow;
   });
   if (lodging) {
-    console.log(`
---- Lodging: ${lodging.name} ---`);
-    console.log("Price per guest:", lodging.price);
-    console.log("Commission Type:", lodging.commission_type);
-    console.log("Commission Value:", lodging.commission_value);
     const breakdown = calculatePaymentBreakdownWithGuests(
       lodging.price,
       lodging.commission_type,
@@ -1876,19 +1967,12 @@ function calculateTotalWithCommissions(activities, lodging, guestsCount, payment
       paymentType,
       guests
     );
-    console.log("Breakdown:", breakdown);
-    console.log("Pay Now total:", breakdown.payNow);
     total += breakdown.payNow;
   }
-  console.log("\n--- FINAL TOTAL ---");
-  console.log("Total:", total);
   return total;
 }
 async function createStripePaymentIntent({ total, user, paymentMethod, activityNames, activityIds, lodgingId }) {
   const amountInCents = Math.round(Number(total) * 100);
-  console.log("\u{1F50D} DEBUG - Stripe Payment Intent:");
-  console.log("Total (MXN):", total);
-  console.log("Amount in cents:", amountInCents);
   return await stripe_default.paymentIntents.create({
     amount: amountInCents,
     currency: "mxn",
@@ -1938,28 +2022,9 @@ var resolver = {
       const totalInBack = calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType);
       const roundedTotalInBack = parseFloat(totalInBack.toFixed(2));
       const roundedFrontendTotal = parseFloat(Number(total).toFixed(2));
-      console.log("\u{1F50D} DEBUG - Payment Calculation:");
-      console.log("Activities:", activities.map((a) => ({
-        name: a.name,
-        price: a.price,
-        commission_type: a.commission_type,
-        commission_value: a.commission_value
-      })));
-      console.log("Lodging:", lodging ? {
-        name: lodging.name,
-        price: lodging.price,
-        commission_type: lodging.commission_type,
-        commission_value: lodging.commission_value
-      } : "None");
-      console.log("Guests Count:", guestsCount);
-      console.log("Payment Type:", paymentType);
-      console.log("Frontend Total:", total);
-      console.log("Backend Total (raw):", totalInBack);
-      console.log("Frontend Total (rounded):", roundedFrontendTotal);
-      console.log("Backend Total (rounded):", roundedTotalInBack);
       if (roundedFrontendTotal !== roundedTotalInBack) {
         return {
-          message: `Communication error: Frontend total (${roundedFrontendTotal}) doesn't match backend total (${roundedTotalInBack}). Please reload the page and try again.`,
+          message: `Communication error, please reload the page and try again.`,
           success: false
         };
       }
@@ -2281,7 +2346,7 @@ var {
   S3_SECRET_ACCESS_KEY: secretAccessKey = ""
 } = process.env;
 var keystone_default = withAuth(
-  (0, import_core19.config)({
+  (0, import_core20.config)({
     db: {
       provider: "postgresql",
       url: `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}`

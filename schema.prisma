@@ -320,6 +320,15 @@ model User {
   createdAt        DateTime?       @default(now())
 }
 
+model Contact {
+  id        String    @id @default(cuid())
+  name      String    @default("")
+  email     String    @default("")
+  phone     String    @default("")
+  message   String    @default("")
+  createdAt DateTime? @default(now())
+}
+
 enum BookingStatusType {
   pending
   paid

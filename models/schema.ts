@@ -16,6 +16,7 @@ import LodgingInclude from "./Lodging/LodgingInclude";
 import Payment from "./Payment/Payment";
 import PaymentMethod from "./Payment/PaymentMethod";
 import Role from "./Role/Role";
+import Contact from "./Contact/Contact";
 
 export default {
   Activity,
@@ -35,5 +36,6 @@ export default {
   PaymentMethod,
   Review,
   Role,
-  User
+  User,
+  Contact
 };
