@@ -1129,43 +1129,17 @@ async function sendContactNotificationToAdmins(contact, context) {
 // models/Booking/Booking.hooks.ts
 var bookingHooks = {
   afterOperation: async ({ operation, item, context }) => {
-    console.log("\u{1F4C5} [BOOKING_HOOK] Hook triggered:", {
-      operation,
-      bookingId: item.id,
-      status: item.status,
-      paymentType: item.payment_type,
-      userId: item.user?.id,
-      timestamp: (/* @__PURE__ */ new Date()).toISOString()
-    });
     if (operation === "create") {
-      console.log("\u{1F195} [BOOKING_HOOK] Processing new booking creation...", {
-        bookingId: item.id,
-        startDate: item.start_date,
-        endDate: item.end_date,
-        guestsAdults: item.guests_adults,
-        status: item.status
-      });
       let code = getBookingCode({ id: item.id, createdAt: item.createdAt });
       let attempts = 0;
       const maxAttempts = 10;
-      console.log("\u{1F511} [BOOKING_HOOK] Generating unique booking code...", {
-        initialCode: code,
-        bookingId: item.id,
-        createdAt: item.createdAt
-      });
       while (attempts < maxAttempts) {
-        console.log(`\u{1F50D} [BOOKING_HOOK] Checking code uniqueness (attempt ${attempts + 1}/${maxAttempts}):`, { code });
         const existingBooking = await context.query.Booking.findOne({
           where: { code }
         });
         if (!existingBooking) {
-          console.log("\u2705 [BOOKING_HOOK] Code is unique:", { code });
           break;
         }
-        console.log("\u26A0\uFE0F [BOOKING_HOOK] Code already exists, generating new one...", {
-          existingCode: code,
-          existingBookingId: existingBooking.id
-        });
         code = getBookingCode({
           id: item.id + Math.random().toString(36).substring(2, 8),
           createdAt: item.createdAt
@@ -1173,27 +1147,13 @@ var bookingHooks = {
         attempts++;
       }
       if (attempts >= maxAttempts) {
-        console.error("\u274C [BOOKING_HOOK] Failed to generate unique code after maximum attempts:", {
-          maxAttempts,
-          finalCode: code,
-          bookingId: item.id
-        });
         return;
       }
-      console.log("\u{1F4BE} [BOOKING_HOOK] Updating booking with unique code...", {
-        bookingId: item.id,
-        finalCode: code
-      });
       await context.sudo().query.Booking.updateOne({
         where: { id: item.id },
         data: { code }
       });
-      console.log("\u2705 [BOOKING_HOOK] Booking code updated successfully");
       if (item.user?.id) {
-        console.log("\u{1F464} [BOOKING_HOOK] User found, fetching booking details for notifications...", {
-          userId: item.user.id,
-          bookingId: item.id
-        });
         const [user, activities, location] = await Promise.all([
           context.query.User.findOne({
             where: { id: item.user.id },
@@ -1208,49 +1168,23 @@ var bookingHooks = {
             query: "name image { url }"
           })
         ]);
-        console.log("\u{1F4CA} [BOOKING_HOOK] Booking data fetched:", {
-          user: user ? { id: user.id, name: user.name, email: user.email } : null,
-          activitiesCount: activities?.length || 0,
-          location: location ? { id: location.id, name: location.name } : null,
-          hasLodging: !!item.lodging?.id
-        });
         let lodging;
         if (item.lodging?.id) {
-          console.log("\u{1F3E8} [BOOKING_HOOK] Fetching lodging details...", { lodgingId: item.lodging.id });
           lodging = await context.query.Lodging.findOne({
             where: { id: item.lodging.id },
             query: "id name"
           });
-          console.log("\u{1F3E8} [BOOKING_HOOK] Lodging fetched:", lodging ? { id: lodging.id, name: lodging.name } : "Not found");
         }
-        console.log("\u{1F465} [BOOKING_HOOK] Processing activity hosts...", {
-          activitiesCount: activities?.length || 0,
-          activities: activities?.map((a) => ({ id: a.id, name: a.name, hostId: a.hostBy?.id })) || []
-        });
         const hostIds = activities.map((activity) => activity.hostBy?.id).filter(Boolean);
-        console.log("\u{1F465} [BOOKING_HOOK] Host IDs found:", { hostIds, uniqueHosts: [...new Set(hostIds)] });
         const users = await context.query.User.findMany({
           where: { id: { in: hostIds } },
           query: "id name lastName email phone countryCode"
-        });
-        console.log("\u{1F465} [BOOKING_HOOK] Host users fetched:", {
-          requestedHosts: hostIds.length,
-          foundHosts: users.length,
-          hosts: users.map((u) => ({ id: u.id, name: u.name, email: u.email }))
         });
         const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
         const activitiesWithHost = activities.map((activity) => ({
           ...activity,
           host: userMap[activity.hostBy?.id] || null
         }));
-        console.log("\u{1F4CB} [BOOKING_HOOK] Activities with host data prepared:", {
-          activitiesWithHost: activitiesWithHost.map((a) => ({
-            id: a.id,
-            name: a.name,
-            hasHost: !!a.host,
-            hostName: a.host?.name || "No host"
-          }))
-        });
         const bookingInfo = {
           ...item,
           user,
@@ -1258,17 +1192,7 @@ var bookingHooks = {
           location,
           lodging
         };
-        console.log("\u{1F4E7} [BOOKING_HOOK] Preparing to send notifications...", {
-          bookingId: item.id,
-          userEmail: user?.email,
-          userPhone: user?.phone,
-          userCountryCode: user?.countryCode,
-          activitiesCount: activitiesWithHost?.length || 0,
-          hasLocation: !!location,
-          hasLodging: !!lodging
-        });
         try {
-          console.log("\u{1F4E7} [BOOKING_HOOK] Sending confirmation email...");
           await sendConfirmationEmail(bookingInfo);
           console.log("\u2705 [BOOKING_HOOK] Confirmation email sent successfully");
         } catch (emailError) {
@@ -1280,7 +1204,6 @@ var bookingHooks = {
           });
         }
         try {
-          console.log("\u{1F4F1} [BOOKING_HOOK] Sending confirmation SMS...");
           await sendConfirmationSMS(bookingInfo);
           console.log("\u2705 [BOOKING_HOOK] Confirmation SMS sent successfully");
         } catch (smsError) {
@@ -1292,12 +1215,6 @@ var bookingHooks = {
             userCountryCode: user?.countryCode
           });
         }
-        console.log("\u{1F389} [BOOKING_HOOK] Booking hook processing completed successfully", {
-          bookingId: item.id,
-          code,
-          userEmail: user?.email,
-          userPhone: user?.phone
-        });
       } else {
         console.log("\u26A0\uFE0F [BOOKING_HOOK] Booking created without associated user - no notifications sent", {
           bookingId: item.id,
@@ -2143,16 +2060,6 @@ function calculateTotalWithCommissions(activities, lodging, guestsCount, payment
   return total;
 }
 async function createStripePaymentIntent({ total, user, paymentMethod, activityNames, activityIds, lodgingId }) {
-  console.log("\u{1F4B3} [STRIPE_PAYMENT_INTENT] Creating payment intent with params:", {
-    total,
-    amountInCents: Math.round(Number(total) * 100),
-    currency: "mxn",
-    customerId: user.stripeCustomerId,
-    paymentMethodId: paymentMethod.stripePaymentMethodId,
-    activityNames,
-    activityIds,
-    lodgingId
-  });
   const amountInCents = Math.round(Number(total) * 100);
   try {
     const paymentIntent = await stripe_default.paymentIntents.create({
@@ -2169,20 +2076,8 @@ async function createStripePaymentIntent({ total, user, paymentMethod, activityN
         lodgingId
       }
     });
-    console.log("\u2705 [STRIPE_PAYMENT_INTENT] Payment intent created successfully:", {
-      id: paymentIntent.id,
-      status: paymentIntent.status,
-      amount: paymentIntent.amount,
-      currency: paymentIntent.currency,
-      client_secret: paymentIntent.client_secret
-    });
     return paymentIntent;
   } catch (error) {
-    console.error("\u274C [STRIPE_PAYMENT_INTENT] Error creating payment intent:", {
-      error: error.message,
-      stack: error.stack,
-      params: { total, user: user.stripeCustomerId, paymentMethod: paymentMethod.stripePaymentMethodId }
-    });
     throw error;
   }
 }
@@ -2202,74 +2097,39 @@ var resolver = {
     noDuplicatePaymentMethod,
     paymentType
   }, context) => {
-    console.log("\u{1F680} [MAKE_PAYMENT] Starting payment process", {
-      activityIds,
-      lodgingId,
-      locationId,
-      startDate,
-      endDate,
-      guestsCount,
-      nameCard,
-      email,
-      paymentMethodId,
-      total,
-      noDuplicatePaymentMethod,
-      paymentType,
-      timestamp: (/* @__PURE__ */ new Date()).toISOString()
-    });
     let paymentIntentId;
     let paymentId;
     let bookingId;
     try {
-      console.log("\u{1F50D} [MAKE_PAYMENT] Validating input data...");
       validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType });
-      console.log("\u2705 [MAKE_PAYMENT] Input validation passed");
-      console.log("\u{1F50D} [MAKE_PAYMENT] Fetching activities...", { activityIds });
       const activities = await context.query.Activity.findMany({
         where: { id: { in: activityIds } },
         query: "id name price commission_type commission_value"
       });
-      console.log("\u{1F4CB} [MAKE_PAYMENT] Activities found:", activities.map((a) => ({ id: a.id, name: a.name, price: a.price, commission_type: a.commission_type, commission_value: a.commission_value })));
       if (!activities || activities.length === 0) throw new Error("No valid activities found.");
       let lodging = void 0;
       if (lodgingId) {
-        console.log("\u{1F50D} [MAKE_PAYMENT] Fetching lodging...", { lodgingId });
         lodging = await context.query.Lodging.findOne({
           where: { id: lodgingId },
           query: "id name price commission_type commission_value"
         });
-        console.log("\u{1F3E8} [MAKE_PAYMENT] Lodging found:", lodging ? { id: lodging.id, name: lodging.name, price: lodging.price, commission_type: lodging.commission_type, commission_value: lodging.commission_value } : "No lodging");
         if (!lodging) throw new Error("Selected lodging not found.");
       }
-      console.log("\u{1F4B0} [MAKE_PAYMENT] Calculating totals...", { guestsCount, paymentType });
       const totalInBack = calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType);
       const roundedTotalInBack = parseFloat(totalInBack.toFixed(2));
       const roundedFrontendTotal = parseFloat(Number(total).toFixed(2));
-      console.log("\u{1F4B0} [MAKE_PAYMENT] Total comparison:", {
-        frontendTotal: roundedFrontendTotal,
-        backendTotal: roundedTotalInBack,
-        match: roundedFrontendTotal === roundedTotalInBack
-      });
       if (roundedFrontendTotal !== roundedTotalInBack) {
-        console.error("\u274C [MAKE_PAYMENT] Total mismatch detected!", {
-          frontendTotal: roundedFrontendTotal,
-          backendTotal: roundedTotalInBack,
-          difference: Math.abs(roundedFrontendTotal - roundedTotalInBack)
-        });
         return {
           message: `Communication error, please reload the page and try again.`,
           success: false
         };
       }
-      console.log("\u{1F464} [MAKE_PAYMENT] Fetching user...", { email });
       const user = await context.query.User.findOne({
         where: { email },
         query: "id name email stripeCustomerId"
       });
-      console.log("\u{1F464} [MAKE_PAYMENT] User found:", { id: user?.id, name: user?.name, email: user?.email, hasStripeCustomerId: !!user?.stripeCustomerId });
       if (!user) throw new Error("User not found.");
       if (!user.stripeCustomerId) {
-        console.log("\u{1F4B3} [MAKE_PAYMENT] Creating Stripe customer...", { userId: user.id, email: user.email, name: user.name });
         const stripeCustomer = await stripe_default.customers.create({
           email: user.email,
           name: user.name,
@@ -2277,26 +2137,18 @@ var resolver = {
             userId: user.id
           }
         });
-        console.log("\u{1F4B3} [MAKE_PAYMENT] Stripe customer created:", { customerId: stripeCustomer.id });
         await context.sudo().query.User.updateOne({
           where: { id: user.id },
           data: { stripeCustomerId: stripeCustomer.id }
         });
         user.stripeCustomerId = stripeCustomer.id;
-        console.log("\u2705 [MAKE_PAYMENT] User updated with Stripe customer ID");
       }
-      console.log("\u{1F4B3} [MAKE_PAYMENT] Fetching payment method...", { paymentMethodId });
       const paymentMethod = await context.query.PaymentMethod.findOne({
         where: { id: paymentMethodId },
         query: "id stripeProcessorId stripePaymentMethodId"
       });
-      console.log("\u{1F4B3} [MAKE_PAYMENT] Payment method found:", { id: paymentMethod?.id, stripeProcessorId: paymentMethod?.stripeProcessorId, stripePaymentMethodId: paymentMethod?.stripePaymentMethodId });
       if (!paymentMethod) throw new Error("Payment method not found.");
       if (noDuplicatePaymentMethod) {
-        console.log("\u{1F517} [MAKE_PAYMENT] Attaching payment method to customer...", {
-          stripePaymentMethodId: paymentMethod.stripePaymentMethodId,
-          stripeCustomerId: user.stripeCustomerId
-        });
         await stripe_default.paymentMethods.attach(paymentMethod.stripePaymentMethodId, {
           customer: user.stripeCustomerId
         });
@@ -2305,19 +2157,10 @@ var resolver = {
             default_payment_method: paymentMethod.stripePaymentMethodId
           }
         });
-        console.log("\u2705 [MAKE_PAYMENT] Payment method attached and set as default");
       }
       const activityNames = activities.map((activity) => activity.name).join(", ");
       const activityIdsStr = activities.map((activity) => activity.id).join(",");
       const roundedTotal = roundedTotalInBack.toString();
-      console.log("\u{1F4B3} [MAKE_PAYMENT] Creating Stripe payment intent...", {
-        total: roundedTotal,
-        activityNames,
-        activityIds: activityIdsStr,
-        lodgingId,
-        userStripeCustomerId: user.stripeCustomerId,
-        paymentMethodId: paymentMethod.stripePaymentMethodId
-      });
       const stripePaymentIntent = await createStripePaymentIntent({
         total: roundedTotal,
         user,
@@ -2327,15 +2170,7 @@ var resolver = {
         lodgingId
       });
       paymentIntentId = stripePaymentIntent?.id;
-      console.log("\u{1F4B3} [MAKE_PAYMENT] Stripe payment intent created:", {
-        paymentIntentId,
-        status: stripePaymentIntent?.status,
-        amount: stripePaymentIntent?.amount,
-        currency: stripePaymentIntent?.currency,
-        hasError: !!stripePaymentIntent?.error
-      });
       if (stripePaymentIntent?.error) {
-        console.error("\u274C [MAKE_PAYMENT] Stripe payment intent error:", stripePaymentIntent.error);
         await context.query.Payment.createOne({
           data: {
             paymentMethod: "card",
@@ -2351,14 +2186,6 @@ var resolver = {
           success: false
         };
       }
-      console.log("\u{1F4BE} [MAKE_PAYMENT] Creating payment record...", {
-        paymentMethodId,
-        activityIds: activities.map((a) => a.id),
-        lodgingId: lodging?.id,
-        userId: user.id,
-        amount: roundedTotal,
-        stripePaymentIntentId: stripePaymentIntent?.id
-      });
       let payment = await context.query.Payment.createOne({
         data: {
           paymentMethod: { connect: { id: paymentMethodId } },
@@ -2372,20 +2199,7 @@ var resolver = {
         }
       });
       paymentId = payment.id;
-      console.log("\u2705 [MAKE_PAYMENT] Payment record created:", { paymentId });
       const bookingStatus = paymentType === "full_payment" ? "paid" : "reserved";
-      console.log("\u{1F4C5} [MAKE_PAYMENT] Creating booking record...", {
-        startDate,
-        endDate,
-        guestsAdults: Number(guestsCount),
-        paymentType,
-        bookingStatus,
-        activityIds: activities.map((a) => a.id),
-        lodgingId: lodging?.id,
-        locationId,
-        userId: user.id,
-        paymentId
-      });
       const booking = await context.query.Booking.createOne({
         data: {
           start_date: startDate,
@@ -2397,21 +2211,14 @@ var resolver = {
           location: { connect: { id: locationId } },
           user: { connect: { id: user.id } },
           payment: { connect: { id: payment.id } },
-          status: bookingStatus
+          status: bookingStatus,
+          code: getBookingCode({ id: payment.id, createdAt: payment.createdAt })
+          //this is to prevent the code stay empty
         }
       });
       bookingId = booking.id;
-      console.log("\u2705 [MAKE_PAYMENT] Booking record created:", { bookingId });
-      console.log("\u{1F4B3} [MAKE_PAYMENT] Confirming Stripe payment intent...", { paymentIntentId });
       await stripe_default.paymentIntents.confirm(paymentIntentId, {
         off_session: true
-      });
-      console.log("\u2705 [MAKE_PAYMENT] Stripe payment intent confirmed");
-      console.log("\u{1F389} [MAKE_PAYMENT] Payment process completed successfully!", {
-        paymentId,
-        bookingId,
-        paymentIntentId,
-        total: roundedTotal
       });
       return {
         message: "Tu pago y reserva han sido creadas exitosamente. En breve te llegara un correo de confirmaci\xF3n. Te estamos redirigiendo a la p\xE1gina de tu reserva...",
@@ -2419,43 +2226,24 @@ var resolver = {
         data: { booking: booking.id }
       };
     } catch (e) {
-      console.error("\u274C [MAKE_PAYMENT] Error occurred during payment process:", {
-        error: e.message,
-        stack: e.stack,
-        paymentIntentId,
-        paymentId,
-        bookingId,
-        timestamp: (/* @__PURE__ */ new Date()).toISOString()
-      });
       if (paymentIntentId) {
-        console.log("\u{1F504} [MAKE_PAYMENT] Cancelling Stripe payment intent...", { paymentIntentId });
         try {
           await stripe_default.paymentIntents.cancel(paymentIntentId);
-          console.log("\u2705 [MAKE_PAYMENT] Stripe payment intent cancelled");
-        } catch (cancelError) {
-          console.error("\u274C [MAKE_PAYMENT] Failed to cancel Stripe payment intent:", cancelError);
+        } catch (_) {
         }
       }
       if (paymentId) {
-        console.log("\u{1F504} [MAKE_PAYMENT] Updating payment status to cancelled...", { paymentId });
         await context.sudo().query.Payment.updateOne({
           where: { id: paymentId },
           data: { status: "cancelled", notes: notes + " - Reason for cancellation: Communication error with the server. " + e.message }
         });
-        console.log("\u2705 [MAKE_PAYMENT] Payment status updated to cancelled");
       }
       if (bookingId) {
-        console.log("\u{1F504} [MAKE_PAYMENT] Updating booking status to cancelled...", { bookingId });
         await context.sudo().query.Booking.updateOne({
           where: { id: bookingId },
           data: { status: "cancelled" }
         });
-        console.log("\u2705 [MAKE_PAYMENT] Booking status updated to cancelled");
       }
-      console.error("\u274C [MAKE_PAYMENT] Returning error response:", {
-        message: e && typeof e === "object" && "message" in e ? e.message : "We had communication problems with the server. Please try again.",
-        success: false
-      });
       return {
         message: e && typeof e === "object" && "message" in e ? e.message : "We had communication problems with the server. Please try again.",
         success: false
