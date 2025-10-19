@@ -1,7 +1,8 @@
 import { list } from "@keystone-6/core";
 import { timestamp, select, relationship } from "@keystone-6/core/fields";
-import { role_options } from "./constants";
+import { Role, role_options } from "./constants";
 import access from "./Role.access";
+import { hasRole } from "../../auth/permissions";
 
 export default list({
   access,
@@ -14,6 +15,9 @@ export default list({
     user: relationship({
       ref: "User.role",
       many: true,
+      access: {
+        update: ({ session }) => hasRole(session, [Role.ADMIN]),
+      },
     }),
     createdAt: timestamp({
       defaultValue: {

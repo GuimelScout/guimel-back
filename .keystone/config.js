@@ -80,13 +80,13 @@ var role_options = [
 
 // auth/permissions.ts
 var hasRole = (session2, allowedRoles) => {
-  if (!session2 || !session2.role) {
+  if (!session2 || !session2.data.role) {
     return false;
   }
-  const hasAccess = session2.role?.some(
+  const hasAccess = session2.data.role?.some(
     (role) => [...allowedRoles, "admin" /* ADMIN */].includes(role.name)
   );
-  return !!hasAccess;
+  return hasAccess;
 };
 
 // models/Lodging/Lodging.access.ts
@@ -1859,7 +1859,10 @@ var Role_default = (0, import_core18.list)({
     }),
     user: (0, import_fields18.relationship)({
       ref: "User.role",
-      many: true
+      many: true,
+      access: {
+        update: ({ session: session2 }) => hasRole(session2, ["admin" /* ADMIN */])
+      }
     }),
     createdAt: (0, import_fields18.timestamp)({
       defaultValue: {

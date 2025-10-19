@@ -12,14 +12,14 @@ import { Role } from "../models/Role/constants";
  * @returns : boolean -> if set user has permission for desaired action
  */
 export const hasRole = (session: any, allowedRoles: string[]) => {
-  if (!session || !session.role) {
+  if (!session || !session.data.role) {
     return false;
   }
   
-  const hasAccess = session.role?.some((role: any) =>
+  const hasAccess = session.data.role?.some((role: any) =>
     [...allowedRoles, Role.ADMIN].includes(role.name)
   );
-  return !!hasAccess;
+  return hasAccess;
 };
 
 // ------- AUTH VALIDATIONS --------
