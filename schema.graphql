@@ -14,6 +14,7 @@ type Activity {
   type_day: String
   is_available: Boolean
   reviewStar: Float
+  totalReviews: Int
   includes(where: ActivityIncludeWhereInput! = {}, orderBy: [ActivityIncludeOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ActivityIncludeWhereUniqueInput): [ActivityInclude!]
   includesCount(where: ActivityIncludeWhereInput! = {}): Int
   whatToDo(where: ActivityWhatToDoWhereInput! = {}, orderBy: [ActivityWhatToDoOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ActivityWhatToDoWhereUniqueInput): [ActivityWhatToDo!]

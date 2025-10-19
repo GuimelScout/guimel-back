@@ -57,6 +57,9 @@ export default list({
         { label: "Algunos días", value: 'some_days' }, // when user select some_days, AvailableDays save the info
       ],
       validation: { isRequired: true },
+      ui: {
+       description: "Select the type of day the activity is available. If you select 'some_days', you must select the days in the AvailableDays section.",
+      },
     }),
      is_available: virtual({
           field: graphql.field({
@@ -83,6 +86,17 @@ export default list({
           },
         }),
       }),
+      totalReviews: virtual({
+        field: graphql.field({
+          type: graphql.Int,
+          async resolve(item: any, args, context) {
+            const reviews = await context.db.Review.findMany({
+              where: { activity: { id: { equals: item.id } } },
+            });
+            return reviews.length;
+          },
+        }),
+      }),
     includes: relationship({
       ref: "ActivityInclude.activity",
       many: true,
@@ -97,6 +111,9 @@ export default list({
     available_days: relationship({
       ref: "ActivityAvailableDay.activity",
       many: true,
+      ui: {
+        description: "Select the days the activity is available only if you select 'some_days' in the Type day section.",
+      },
     }),
     lodging: relationship({
       ref: "Lodging.activity",

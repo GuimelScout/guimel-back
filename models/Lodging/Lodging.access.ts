@@ -13,31 +13,28 @@ const access = {
   },
   filter: {
     query: ({ session }: any) => true,
-    update: ({ session }: any) =>
-      {
+    update: ({ session }: any) => {
+      if (hasRole(session, [Role.ADMIN])) {
+        return true;
+      }
 
-        if (hasRole(session, [Role.ADMIN])) {
-          return true;
-        }
+      if (hasRole(session, [Role.HOSTER])) {
+        return { hostBy: { id: { equals: session.itemId } } };
+      }
 
-        if (hasRole(session, [Role.HOSTER])) {
-          return { hostBy: { id: { equals: session.itemId } } };
-        }
+      return false;
+    },
+    delete: ({ session }: any) => {
+      if (hasRole(session, [Role.ADMIN])) {
+        return true;
+      }
 
-        return false;
-      },
-    delete: ({ session }: any) =>
-      {
-        if (hasRole(session, [Role.ADMIN])) {
-          return true;
-        }
+      if (hasRole(session, [Role.HOSTER])) {
+        return { hostBy: { id: { equals: session.itemId } } };
+      }
 
-        if (hasRole(session, [Role.HOSTER])) {
-          return { hostBy: { id: { equals: session.itemId } } };
-        }
-
-        return false;
-      },
+      return false;
+    },
   },
   item: {
     create: ({ session }: any) =>
