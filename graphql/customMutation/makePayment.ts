@@ -131,8 +131,7 @@ async function createStripePaymentIntent({ total, user, paymentMethod, activityN
     customer: user.stripeCustomerId,
     payment_method: paymentMethod.stripePaymentMethodId,
     description: `Payment for activities: ${activityNames} (${activityIds})`,
-    confirm: true,
-    off_session: true,
+    confirm: false, // Don't confirm immediately, keep in processing state
     metadata: {
       paymentMethod: paymentMethod.id,
       activityIds: activityIds,
@@ -161,8 +160,10 @@ const resolver = {
     }: PaymentInput & { notes: string; noDuplicatePaymentMethod: boolean },
     context: KeystoneContext,
   ) => {
+    
+    let paymentIntentId: string | undefined;
+    
     try {
-      // Input validation
       validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType });
 
       // Find activities with commission data
@@ -182,10 +183,8 @@ const resolver = {
         if (!lodging) throw new Error("Selected lodging not found.");
       }
       
-      // Calculate total in backend with commissions
       const totalInBack = calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType);
-      
-      // Round to 2 decimal places to avoid floating point precision issues
+
       const roundedTotalInBack = parseFloat(totalInBack.toFixed(2));
       const roundedFrontendTotal = parseFloat(Number(total).toFixed(2));
       
@@ -196,14 +195,12 @@ const resolver = {
         };
       }
 
-      // Find user
       const user = (await context.query.User.findOne({
         where: { email },
         query: "id name email stripeCustomerId"
       })) as { id: string; name: string; email: string; stripeCustomerId: string };
       if (!user) throw new Error("User not found.");
 
-      // Check if user has Stripe customer ID, create one if not
       if (!user.stripeCustomerId) {
         const stripeCustomer = await Stripe.customers.create({
           email: user.email,
@@ -212,23 +209,19 @@ const resolver = {
             userId: user.id
           }
         });
-        
-        // Update user with Stripe customer ID
-        await context.query.User.updateOne({
+        await context.sudo().query.User.updateOne({
           where: { id: user.id },
           data: { stripeCustomerId: stripeCustomer.id }
         });
         user.stripeCustomerId = stripeCustomer.id;
       }
 
-      // Find payment method
       const paymentMethod = (await context.query.PaymentMethod.findOne({
         where: { id: paymentMethodId },
         query: "id stripeProcessorId stripePaymentMethodId"
       })) as { id: string; stripeProcessorId: string; stripePaymentMethodId: string };
       if (!paymentMethod) throw new Error("Payment method not found.");
 
-      // Attach payment method if applicable
       if (noDuplicatePaymentMethod) {
         await Stripe.paymentMethods.attach(paymentMethod.stripePaymentMethodId, {
           customer: user.stripeCustomerId,
@@ -240,11 +233,9 @@ const resolver = {
         });
       }
 
-      // Create description
       const activityNames = activities.map(activity => activity.name).join(", ");
       const activityIdsStr = activities.map(activity => activity.id).join(",");
 
-      // Create PaymentIntent with rounded total
       const roundedTotal = roundedTotalInBack.toString();
       const stripePaymentIntent = await createStripePaymentIntent({
         total: roundedTotal,
@@ -254,9 +245,10 @@ const resolver = {
         activityIds: activityIdsStr,
         lodgingId
       });
+          
+      paymentIntentId = stripePaymentIntent?.id;
 
       if (stripePaymentIntent?.error) {
-        // Record failed payment
         await context.query.Payment.createOne({
           data: {
             paymentMethod: 'card',
@@ -272,8 +264,6 @@ const resolver = {
           success: false,
         };
       }
-
-      // Record successful payment
       const payment = await context.query.Payment.createOne({
         data: {
           paymentMethod: { connect: { id: paymentMethodId } },
@@ -287,7 +277,6 @@ const resolver = {
         },
       });
 
-      // Record booking with payment type and appropriate status
       const bookingStatus = paymentType === 'full_payment' ? 'paid' : 'reserved';
       const booking = await context.query.Booking.createOne({
         data: {
@@ -304,12 +293,23 @@ const resolver = {
         },
       });
 
+     await Stripe.paymentIntents.confirm(paymentIntentId, {
+        off_session: true
+      });
+
       return {
-        message: "Payment and booking creation successful.",
+        message: "Tu pago y reserva han sido creadas exitosamente. En breve te llegara un correo de confirmación. Te estamos redirigiendo a la página de tu reserva...",
         success: true,
         data: { booking: booking.id },
       };
     } catch (e: any) {
+      if (paymentIntentId) {
+        try {
+          await Stripe.paymentIntents.cancel(paymentIntentId);
+        } catch (_) {
+        }
+      }
+      
       return {
         message: (e && typeof e === 'object' && 'message' in e) ? e.message : "We had communication problems with the server. Please try again.",
         success: false,

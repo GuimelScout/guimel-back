@@ -5,44 +5,54 @@ const access = {
   operation: {
     query: ({ session }: any) => true,
     create: ({ session }: any) => true,
-    update: ({ session }: any) =>
-      hasRole(session, [Role.HOSTER]),
-    delete: ({ session }: any) =>
-      hasRole(session, [Role.HOSTER]),
+    update: ({ session }: any) => {
+      if (!session) return false;
+      return hasRole(session, [Role.HOSTER]);
+    },
+    delete: ({ session }: any) => {
+      if (!session) return false;
+      return hasRole(session, [Role.HOSTER]);
+    },
   },
   filter: {
     query: ({ session }: any) => true,
-    update: ({ session }: any) =>
-      {
-        if (hasRole(session, [Role.ADMIN])) {
-          return true;
-        }
+    update: ({ session }: any) => {
+      if (!session) return false;
+      
+      if (hasRole(session, [Role.ADMIN])) {
+        return true;
+      }
 
-        if (hasRole(session, [Role.HOSTER])) {
-          return { user: { id: { equals: session.itemId } } };
-        }
+      if (hasRole(session, [Role.HOSTER])) {
+        return { user: { id: { equals: session.itemId } } };
+      }
 
-        return false;
-      },
-    delete: ({ session }: any) =>
-      {
-        if (hasRole(session, [Role.ADMIN])) {
-          return true;
-        }
+      return false;
+    },
+    delete: ({ session }: any) => {
+      if (!session) return false;
+      
+      if (hasRole(session, [Role.ADMIN])) {
+        return true;
+      }
 
-        if (hasRole(session, [Role.HOSTER])) {
-          return { user: { id: { equals: session.itemId } } };
-        }
+      if (hasRole(session, [Role.HOSTER])) {
+        return { user: { id: { equals: session.itemId } } };
+      }
 
-        return false;
-      },
+      return false;
+    },
   },
   item: {
     create: ({ session }: any) => true,
-    update: ({ session }: any) =>
-      hasRole(session, [Role.HOSTER]),
-    delete: ({ session }: any) =>
-      hasRole(session, [Role.HOSTER]),
+    update: ({ session }: any) => {
+      if (!session) return false;
+      return hasRole(session, [Role.HOSTER]);
+    },
+    delete: ({ session }: any) => {
+      if (!session) return false;
+      return hasRole(session, [Role.HOSTER]);
+    },
   },
 };
 export default access;

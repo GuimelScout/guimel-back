@@ -68,8 +68,6 @@ const resolver = { SetUpIntentStripe: async (root: any, {email}: {email:string},
         },
       };
     } catch (e: any) {
-      // eslint-disable-next-line no-console
-      console.log(e);
       return {
         message: e,
         success: false,

@@ -80,10 +80,13 @@ var role_options = [
 
 // auth/permissions.ts
 var hasRole = (session2, allowedRoles) => {
-  const hasAccess = session2.data.role?.some(
+  if (!session2 || !session2.role) {
+    return false;
+  }
+  const hasAccess = session2.role?.some(
     (role) => [...allowedRoles, "admin" /* ADMIN */].includes(role.name)
   );
-  return !!session2 && hasAccess;
+  return !!hasAccess;
 };
 
 // models/Lodging/Lodging.access.ts
@@ -623,8 +626,24 @@ var access3 = {
   },
   item: {
     create: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
-    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
-    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+    update: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return true;
+      }
+      return false;
+    },
+    delete: ({ session: session2 }) => {
+      if (hasRole(session2, ["admin" /* ADMIN */])) {
+        return true;
+      }
+      if (hasRole(session2, ["hoster" /* HOSTER */])) {
+        return true;
+      }
+      return false;
+    }
   }
 };
 var Activity_access_default = access3;
@@ -674,7 +693,10 @@ var Activity_default = (0, import_core4.list)({
         { label: "Algunos d\xEDas", value: "some_days" }
         // when user select some_days, AvailableDays save the info
       ],
-      validation: { isRequired: true }
+      validation: { isRequired: true },
+      ui: {
+        description: "Select the type of day the activity is available. If you select 'some_days', you must select the days in the AvailableDays section."
+      }
     }),
     is_available: (0, import_fields4.virtual)({
       field: import_core4.graphql.field({
@@ -698,6 +720,17 @@ var Activity_default = (0, import_core4.list)({
         }
       })
     }),
+    totalReviews: (0, import_fields4.virtual)({
+      field: import_core4.graphql.field({
+        type: import_core4.graphql.Int,
+        async resolve(item, args, context) {
+          const reviews = await context.db.Review.findMany({
+            where: { activity: { id: { equals: item.id } } }
+          });
+          return reviews.length;
+        }
+      })
+    }),
     includes: (0, import_fields4.relationship)({
       ref: "ActivityInclude.activity",
       many: true
@@ -711,7 +744,10 @@ var Activity_default = (0, import_core4.list)({
     }),
     available_days: (0, import_fields4.relationship)({
       ref: "ActivityAvailableDay.activity",
-      many: true
+      many: true,
+      ui: {
+        description: "Select the days the activity is available only if you select 'some_days' in the Type day section."
+      }
     }),
     lodging: (0, import_fields4.relationship)({
       ref: "Lodging.activity",
@@ -972,9 +1008,11 @@ function getBookingCode(item) {
   const day = fecha.getDate().toString().padStart(2, "0");
   const month = (fecha.getMonth() + 1).toString().padStart(2, "0");
   const anio = fecha.getFullYear() % 100;
-  const fechaFormateada = `${day}${month}${anio}`;
-  const idCode = item.id ? item.id.toString().slice(-6).toUpperCase() : Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `${idCode}-${fechaFormateada}`;
+  const dateFormat = `${day}${month}${anio}`;
+  const timestamp20 = Date.now().toString().slice(-4);
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const idCode = item.id ? `${item.id.toString().slice(-4)}${timestamp20}`.toUpperCase() : `${random}${timestamp20}`.toUpperCase();
+  return `${idCode}-${dateFormat}`;
 }
 
 // utils/helpers/generate_password.ts
@@ -1092,60 +1130,80 @@ async function sendContactNotificationToAdmins(contact, context) {
 var bookingHooks = {
   afterOperation: async ({ operation, item, context }) => {
     if (operation === "create") {
-      const code = getBookingCode({ id: item.id, createdAt: item.createdAt });
-      await context.db.Booking.updateOne({
+      let code = getBookingCode({ id: item.id, createdAt: item.createdAt });
+      let attempts = 0;
+      const maxAttempts = 10;
+      while (attempts < maxAttempts) {
+        const existingBooking = await context.query.Booking.findOne({
+          where: { code }
+        });
+        if (!existingBooking) {
+          break;
+        }
+        code = getBookingCode({
+          id: item.id + Math.random().toString(36).substring(2, 8),
+          createdAt: item.createdAt
+        });
+        attempts++;
+      }
+      if (attempts >= maxAttempts) {
+        return;
+      }
+      await context.sudo().query.Booking.updateOne({
         where: { id: item.id },
         data: { code }
       });
-      const [user, activities, location] = await Promise.all([
-        context.db.User.findOne({
-          where: { id: item.userId },
+      if (item.user?.id) {
+        const [user, activities, location] = await Promise.all([
+          context.query.User.findOne({
+            where: { id: item.user.id },
+            query: "id name lastName email phone countryCode"
+          }),
+          context.query.Activity.findMany({
+            where: { booking: { some: { id: { equals: item.id } } } },
+            query: "id name hostBy { id } location { name image { url } }"
+          }),
+          context.query.Location.findOne({
+            where: { id: item.location?.id },
+            query: "name image { url }"
+          })
+        ]);
+        let lodging;
+        if (item.lodging?.id) {
+          lodging = await context.query.Lodging.findOne({
+            where: { id: item.lodging.id },
+            query: "id name"
+          });
+        }
+        const hostIds = activities.map((activity) => activity.hostBy?.id).filter(Boolean);
+        const users = await context.query.User.findMany({
+          where: { id: { in: hostIds } },
           query: "id name lastName email phone countryCode"
-        }),
-        context.db.Activity.findMany({
-          where: { booking: { some: { id: { equals: item.id } } } },
-          query: "id name location { name image { url } }"
-        }),
-        context.db.Location.findOne({
-          where: { id: item.locationId },
-          query: "name image { url }"
-        })
-      ]);
-      let lodging;
-      if (item.lodgingId) {
-        lodging = context.db.Lodging.findOne({
-          where: { id: item.lodgingId },
-          query: "id name"
         });
-      }
-      const hostIds = activities.map((item2) => item2.hostById).filter(Boolean);
-      const users = await context.db.User.findMany({
-        where: { id: { in: hostIds } },
-        query: "id name lastName email phone countryCode"
-      });
-      const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
-      const activitiesWithHost = activities.map((activity) => ({
-        ...activity,
-        host: userMap[activity.hostById] || null
-      }));
-      const bookingInfo = {
-        ...item,
-        user,
-        activitiesWithHost,
-        location,
-        lodging
-      };
-      try {
-        await sendConfirmationEmail(bookingInfo);
-      } catch (e) {
-        console.log("Error al enviar el correo de confirmaci\xF3n.");
-        console.log(e);
-      }
-      try {
-        await sendConfirmationSMS(bookingInfo);
-      } catch (e) {
-        console.log("Error al enviar el mensaje de confirmaci\xF3n.");
-        console.log(e);
+        const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
+        const activitiesWithHost = activities.map((activity) => ({
+          ...activity,
+          host: userMap[activity.hostBy?.id] || null
+        }));
+        const bookingInfo = {
+          ...item,
+          user,
+          activitiesWithHost,
+          location,
+          lodging
+        };
+        try {
+          await sendConfirmationEmail(bookingInfo);
+          console.log("Correo de confirmaci\xF3n enviado con \xE9xito.");
+        } catch (_) {
+        }
+        try {
+          await sendConfirmationSMS(bookingInfo);
+        } catch (_) {
+          console.log("Error al enviar el mensaje de confirmaci\xF3n.");
+        }
+      } else {
+        console.log("Booking creado sin usuario asociado - no se enviaron notificaciones");
       }
     }
   }
@@ -1156,12 +1214,19 @@ var access6 = {
   operation: {
     query: ({ session: session2 }) => true,
     create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
-    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+    update: ({ session: session2 }) => {
+      if (!session2) return false;
+      return hasRole(session2, ["hoster" /* HOSTER */]);
+    },
+    delete: ({ session: session2 }) => {
+      if (!session2) return false;
+      return hasRole(session2, ["hoster" /* HOSTER */]);
+    }
   },
   filter: {
     query: ({ session: session2 }) => true,
     update: ({ session: session2 }) => {
+      if (!session2) return false;
       if (hasRole(session2, ["admin" /* ADMIN */])) {
         return true;
       }
@@ -1171,6 +1236,7 @@ var access6 = {
       return false;
     },
     delete: ({ session: session2 }) => {
+      if (!session2) return false;
       if (hasRole(session2, ["admin" /* ADMIN */])) {
         return true;
       }
@@ -1182,8 +1248,14 @@ var access6 = {
   },
   item: {
     create: ({ session: session2 }) => true,
-    update: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */]),
-    delete: ({ session: session2 }) => hasRole(session2, ["hoster" /* HOSTER */])
+    update: ({ session: session2 }) => {
+      if (!session2) return false;
+      return hasRole(session2, ["hoster" /* HOSTER */]);
+    },
+    delete: ({ session: session2 }) => {
+      if (!session2) return false;
+      return hasRole(session2, ["hoster" /* HOSTER */]);
+    }
   }
 };
 var Booking_access_default = access6;
@@ -1979,8 +2051,8 @@ async function createStripePaymentIntent({ total, user, paymentMethod, activityN
     customer: user.stripeCustomerId,
     payment_method: paymentMethod.stripePaymentMethodId,
     description: `Payment for activities: ${activityNames} (${activityIds})`,
-    confirm: true,
-    off_session: true,
+    confirm: false,
+    // Don't confirm immediately, keep in processing state
     metadata: {
       paymentMethod: paymentMethod.id,
       activityIds,
@@ -2004,6 +2076,7 @@ var resolver = {
     noDuplicatePaymentMethod,
     paymentType
   }, context) => {
+    let paymentIntentId;
     try {
       validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType });
       const activities = await context.query.Activity.findMany({
@@ -2041,7 +2114,7 @@ var resolver = {
             userId: user.id
           }
         });
-        await context.query.User.updateOne({
+        await context.sudo().query.User.updateOne({
           where: { id: user.id },
           data: { stripeCustomerId: stripeCustomer.id }
         });
@@ -2073,6 +2146,7 @@ var resolver = {
         activityIds: activityIdsStr,
         lodgingId
       });
+      paymentIntentId = stripePaymentIntent?.id;
       if (stripePaymentIntent?.error) {
         await context.query.Payment.createOne({
           data: {
@@ -2116,12 +2190,21 @@ var resolver = {
           status: bookingStatus
         }
       });
+      await stripe_default.paymentIntents.confirm(paymentIntentId, {
+        off_session: true
+      });
       return {
-        message: "Payment and booking creation successful.",
+        message: "Tu pago y reserva han sido creadas exitosamente. En breve te llegara un correo de confirmaci\xF3n. Te estamos redirigiendo a la p\xE1gina de tu reserva...",
         success: true,
         data: { booking: booking.id }
       };
     } catch (e) {
+      if (paymentIntentId) {
+        try {
+          await stripe_default.paymentIntents.cancel(paymentIntentId);
+        } catch (_) {
+        }
+      }
       return {
         message: e && typeof e === "object" && "message" in e ? e.message : "We had communication problems with the server. Please try again.",
         success: false
@@ -2203,7 +2286,6 @@ var resolver2 = {
         }
       };
     } catch (e) {
-      console.log(e);
       return {
         message: e,
         success: false,
