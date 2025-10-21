@@ -486,6 +486,10 @@ var User_default = (0, import_core2.list)({
       ref: "Review.user",
       many: true
     }),
+    createdBy: (0, import_fields2.relationship)({
+      ref: "Review.createdBy",
+      many: true
+    }),
     link: (0, import_fields2.text)({
       isIndexed: "unique",
       hooks: linkHooks2,
@@ -1055,9 +1059,9 @@ async function sendConfirmationEmail(booking) {
   };
   try {
     await import_mail.default.send(msg);
-    console.log("Correo enviado con \xE9xito");
+    console.log("Correo enviado con \xE9xito. \u{1F4E7}");
   } catch (error) {
-    console.error("Error al enviar correo:", error);
+    console.error("Error al enviar correo. \u274C:", error);
   }
 }
 async function sendConfirmationSMS(booking) {
@@ -1085,7 +1089,6 @@ async function sendContactNotificationToAdmins(contact, context) {
       query: "id name lastName email"
     });
     if (adminUsers.length === 0) {
-      console.log("No admin users found to notify");
       return;
     }
     const emailPromises = adminUsers.map(async (admin) => {
@@ -1125,6 +1128,84 @@ async function sendContactNotificationToAdmins(contact, context) {
     console.error("Error sending contact notification to admins:", error);
   }
 }
+async function sendBookingNotificationToHosts(booking) {
+  try {
+    if (!booking.activitiesWithHost || booking.activitiesWithHost.length === 0) {
+      return;
+    }
+    const uniqueHosts = /* @__PURE__ */ new Map();
+    booking.activitiesWithHost.forEach((activity) => {
+      if (activity.host && activity.host.id) {
+        uniqueHosts.set(activity.host.id, {
+          ...activity.host,
+          activities: uniqueHosts.get(activity.host.id)?.activities || []
+        });
+        uniqueHosts.get(activity.host.id).activities.push({
+          name: activity.name,
+          link: activity.link,
+          price: activity.price
+        });
+      }
+    });
+    const hostsToNotify = Array.from(uniqueHosts.values());
+    let finalRecipients = [];
+    if (hostsToNotify.length > 0) {
+      finalRecipients = [hostsToNotify[0]];
+    } else {
+      return;
+    }
+    const emailPromises = finalRecipients.map(async (recipient) => {
+      const msg = {
+        to: recipient.email,
+        from: process.env.SENDGRID_FROM_EMAIL,
+        subject: "\u{1F389} Nueva reservaci\xF3n recibida - Guimel",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">\xA1Nueva reservaci\xF3n recibida!</h2>
+            <p>Hola ${recipient.name},</p>
+            <p>Se ha realizado una nueva reservaci\xF3n en tu actividad:</p>
+            
+            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #555;">Detalles de la reservaci\xF3n:</h3>
+              <p><strong>C\xF3digo de reservaci\xF3n:</strong> ${getBookingCode(booking)}</p>
+              <p><strong>Cliente:</strong> ${booking.user.name} ${booking.user.lastName || ""}</p>
+              <p><strong>Email del cliente:</strong> ${booking.user.email}</p>
+              <p><strong>Tel\xE9fono:</strong> ${booking.user.countryCode || ""}${booking.user.phone || "No proporcionado"}</p>
+              <p><strong>Ubicaci\xF3n:</strong> ${booking.location.name}</p>
+              <p><strong>Fechas:</strong> ${new Date(booking.start_date).toLocaleDateString()} - ${new Date(booking.end_date).toLocaleDateString()}</p>
+              <p><strong>N\xFAmero de hu\xE9spedes:</strong> ${booking.guests_adults}</p>
+              <p><strong>Tipo de pago:</strong> ${booking.payment_type === "full_payment" ? "Pago completo" : "Solo reservaci\xF3n"}</p>
+            </div>
+
+            <div style="background-color: #e8f5e8; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #2d5a2d;">Actividades reservadas:</h3>
+              ${booking.activitiesWithHost.map((activity) => `
+                <div style="margin-bottom: 15px; padding: 10px; background-color: white; border-radius: 3px;">
+                  <p style="margin: 0;"><strong>${activity.name}</strong></p>
+                </div>
+              `).join("")}
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONT_END_URL}/dashboard" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Ver en Dashboard
+              </a>
+            </div>
+          </div>
+        `
+      };
+      return import_mail.default.send(msg);
+    });
+    await Promise.all(emailPromises);
+    console.log(`\u2705 [HOST_NOTIFICATION] Booking notification sent to ${finalRecipients.length} recipients`);
+  } catch (error) {
+    console.error("\u274C [HOST_NOTIFICATION] Error sending booking notification to hosts:", {
+      error: error.message,
+      stack: error.stack,
+      bookingId: booking.id
+    });
+  }
+}
 
 // models/Booking/Booking.hooks.ts
 var bookingHooks = {
@@ -1153,10 +1234,11 @@ var bookingHooks = {
         where: { id: item.id },
         data: { code }
       });
-      if (item.user?.id) {
+      let userID = item.userId || item.user?.id;
+      if (userID) {
         const [user, activities, location] = await Promise.all([
           context.query.User.findOne({
-            where: { id: item.user.id },
+            where: { id: userID },
             query: "id name lastName email phone countryCode"
           }),
           context.query.Activity.findMany({
@@ -1164,14 +1246,14 @@ var bookingHooks = {
             query: "id name hostBy { id } location { name image { url } }"
           }),
           context.query.Location.findOne({
-            where: { id: item.location?.id },
+            where: { id: item.locationId ?? item.location?.id },
             query: "name image { url }"
           })
         ]);
         let lodging;
-        if (item.lodging?.id) {
+        if (item.lodgingId || item.lodging?.id) {
           lodging = await context.query.Lodging.findOne({
-            where: { id: item.lodging.id },
+            where: { id: item.lodgingId ?? item.lodging?.id },
             query: "id name"
           });
         }
@@ -1213,6 +1295,16 @@ var bookingHooks = {
             bookingId: item.id,
             userPhone: user?.phone,
             userCountryCode: user?.countryCode
+          });
+        }
+        try {
+          await sendBookingNotificationToHosts(bookingInfo);
+          console.log("\u2705 [BOOKING_HOOK] Host notification sent successfully");
+        } catch (hostNotificationError) {
+          console.error("\u274C [BOOKING_HOOK] Error sending host notification:", {
+            error: hostNotificationError.message,
+            stack: hostNotificationError.stack,
+            bookingId: item.id
           });
         }
       } else {
@@ -1362,7 +1454,7 @@ var reviewHooks = {
     if (operation === "create" && context.session?.itemId) {
       return {
         ...resolvedData,
-        user: { connect: { id: context.session.itemId } }
+        createdBy: { connect: { id: context.session.itemId } }
       };
     }
     return resolvedData;
@@ -1441,6 +1533,9 @@ var Review_default = (0, import_core10.list)({
     }),
     user: (0, import_fields10.relationship)({
       ref: "User.reviews"
+    }),
+    createdBy: (0, import_fields10.relationship)({
+      ref: "User.createdBy"
     }),
     createdAt: (0, import_fields10.timestamp)({
       defaultValue: {

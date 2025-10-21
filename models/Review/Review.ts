@@ -23,6 +23,9 @@ export default list({
     user: relationship({
       ref: "User.reviews",
     }),
+    createdBy: relationship({
+      ref: "User.createdBy",
+    }),
     createdAt: timestamp({
       defaultValue: {
         kind: "now",

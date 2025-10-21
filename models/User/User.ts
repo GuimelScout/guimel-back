@@ -77,6 +77,10 @@ export default list({
       ref: "Review.user",
       many: true,
     }),
+    createdBy: relationship({
+      ref: "Review.createdBy",
+      many: true,
+    }),
     link: text({
       isIndexed: "unique",
       hooks: linkHooks,

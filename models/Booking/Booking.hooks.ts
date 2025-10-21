@@ -1,4 +1,4 @@
-import { sendConfirmationEmail, sendConfirmationSMS } from "../../utils/notification";
+import { sendConfirmationEmail, sendConfirmationSMS, sendBookingNotificationToHosts } from "../../utils/notification";
 import { getBookingCode } from "../../utils/helpers/bookingCode";
 
 export const bookingHooks = {
@@ -33,14 +33,15 @@ export const bookingHooks = {
           where: { id: item.id },
           data: { code: code }
         });
+
+        let userID = item.userId || item.user?.id;
         
-        if (item.user?.id) {
+        if (userID) {
           const [user, activities, location] = await Promise.all([
             context.query.User.findOne({
-              where: { id: item.user.id },
+              where: { id: userID },
               query: 'id name lastName email phone countryCode',
             }),
-
           
             context.query.Activity.findMany({
               where: { booking: { some: { id: { equals: item.id } } } },
@@ -48,15 +49,15 @@ export const bookingHooks = {
             }),
 
             context.query.Location.findOne({
-              where: { id: item.location?.id },
+              where: { id: item.locationId ?? item.location?.id },
               query: 'name image { url }',
             }),
           ]);
           
           let lodging: any;
-          if(item.lodging?.id){
+          if(item.lodgingId || item.lodging?.id){
             lodging = await context.query.Lodging.findOne({
-              where: { id: item.lodging.id },
+              where: { id: item.lodgingId ?? item.lodging?.id },
               query: 'id name',
             });
           }
@@ -93,7 +94,7 @@ export const bookingHooks = {
               bookingId: item.id,
               userEmail: user?.email
             });
-          }
+          } 
           
           try{
             await sendConfirmationSMS(bookingInfo);
@@ -106,7 +107,18 @@ export const bookingHooks = {
               userPhone: user?.phone,
               userCountryCode: user?.countryCode
             });
-          }
+          } 
+
+          try{
+            await sendBookingNotificationToHosts(bookingInfo);
+            console.log("✅ [BOOKING_HOOK] Host notification sent successfully");
+          }catch(hostNotificationError: any){
+            console.error("❌ [BOOKING_HOOK] Error sending host notification:", {
+              error: hostNotificationError.message,
+              stack: hostNotificationError.stack,
+              bookingId: item.id
+            });
+          } 
         } else {
           console.log("⚠️ [BOOKING_HOOK] Booking created without associated user - no notifications sent", {
             bookingId: item.id,
