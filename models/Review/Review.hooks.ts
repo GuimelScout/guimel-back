@@ -4,7 +4,7 @@ export const reviewHooks = {
     if (operation === "create" && context.session?.itemId) {
       return {
         ...resolvedData,
-        user: { connect: { id: context.session.itemId } },
+        createdBy: { connect: { id: context.session.itemId } },
       }
     }
 

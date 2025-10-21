@@ -261,20 +261,23 @@ model PaymentMethod {
 }
 
 model Review {
-  id         String    @id @default(cuid())
-  review     String    @default("")
-  rating     Int?
-  activity   Activity? @relation("Review_activity", fields: [activityId], references: [id])
-  activityId String?   @map("activity")
-  lodging    Lodging?  @relation("Review_lodging", fields: [lodgingId], references: [id])
-  lodgingId  String?   @map("lodging")
-  user       User?     @relation("Review_user", fields: [userId], references: [id])
-  userId     String?   @map("user")
-  createdAt  DateTime? @default(now())
+  id          String    @id @default(cuid())
+  review      String    @default("")
+  rating      Int?
+  activity    Activity? @relation("Review_activity", fields: [activityId], references: [id])
+  activityId  String?   @map("activity")
+  lodging     Lodging?  @relation("Review_lodging", fields: [lodgingId], references: [id])
+  lodgingId   String?   @map("lodging")
+  user        User?     @relation("Review_user", fields: [userId], references: [id])
+  userId      String?   @map("user")
+  createdBy   User?     @relation("Review_createdBy", fields: [createdById], references: [id])
+  createdById String?   @map("createdBy")
+  createdAt   DateTime? @default(now())
 
   @@index([activityId])
   @@index([lodgingId])
   @@index([userId])
+  @@index([createdById])
 }
 
 model Role {
@@ -306,6 +309,7 @@ model User {
   lodging          Lodging[]       @relation("Lodging_hostBy")
   booking          Booking[]       @relation("Booking_user")
   reviews          Review[]        @relation("Review_user")
+  createdBy        Review[]        @relation("Review_createdBy")
   link             String          @unique @default("")
   status           UserStatusType  @default(initial)
   activity         Activity[]      @relation("Activity_hostBy")

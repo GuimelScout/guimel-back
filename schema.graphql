@@ -1661,6 +1661,7 @@ type Review {
   activity: Activity
   lodging: Lodging
   user: User
+  createdBy: User
   createdAt: DateTime
 }
 
@@ -1678,6 +1679,7 @@ input ReviewWhereInput {
   activity: ActivityWhereInput
   lodging: LodgingWhereInput
   user: UserWhereInput
+  createdBy: UserWhereInput
   createdAt: DateTimeNullableFilter
 }
 
@@ -1694,6 +1696,7 @@ input ReviewUpdateInput {
   activity: ActivityRelateToOneForUpdateInput
   lodging: LodgingRelateToOneForUpdateInput
   user: UserRelateToOneForUpdateInput
+  createdBy: UserRelateToOneForUpdateInput
   createdAt: DateTime
 }
 
@@ -1708,6 +1711,7 @@ input ReviewCreateInput {
   activity: ActivityRelateToOneForCreateInput
   lodging: LodgingRelateToOneForCreateInput
   user: UserRelateToOneForCreateInput
+  createdBy: UserRelateToOneForCreateInput
   createdAt: DateTime
 }
 
@@ -1784,6 +1788,8 @@ type User {
   reviewStar: Float
   reviews(where: ReviewWhereInput! = {}, orderBy: [ReviewOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReviewWhereUniqueInput): [Review!]
   reviewsCount(where: ReviewWhereInput! = {}): Int
+  createdBy(where: ReviewWhereInput! = {}, orderBy: [ReviewOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReviewWhereUniqueInput): [Review!]
+  createdByCount(where: ReviewWhereInput! = {}): Int
   link: String
   status: UserStatusType
   activity(where: ActivityWhereInput! = {}, orderBy: [ActivityOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ActivityWhereUniqueInput): [Activity!]
@@ -1837,6 +1843,7 @@ input UserWhereInput {
   lodging: LodgingManyRelationFilter
   booking: BookingManyRelationFilter
   reviews: ReviewManyRelationFilter
+  createdBy: ReviewManyRelationFilter
   link: StringFilter
   status: UserStatusTypeNullableFilter
   activity: ActivityManyRelationFilter
@@ -1909,6 +1916,7 @@ input UserUpdateInput {
   lodging: LodgingRelateToManyForUpdateInput
   booking: BookingRelateToManyForUpdateInput
   reviews: ReviewRelateToManyForUpdateInput
+  createdBy: ReviewRelateToManyForUpdateInput
   link: String
   status: UserStatusType
   activity: ActivityRelateToManyForUpdateInput
@@ -1959,6 +1967,7 @@ input UserCreateInput {
   lodging: LodgingRelateToManyForCreateInput
   booking: BookingRelateToManyForCreateInput
   reviews: ReviewRelateToManyForCreateInput
+  createdBy: ReviewRelateToManyForCreateInput
   link: String
   status: UserStatusType
   activity: ActivityRelateToManyForCreateInput

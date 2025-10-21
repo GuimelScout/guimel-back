@@ -37,12 +37,15 @@ export async function sendConfirmationEmail(booking: any) {
       })),
     },
   };
+  
+
   try {
     await sgMail.send(msg);
-    console.log('Correo enviado con éxito');
+    console.log('Correo enviado con éxito. 📧');
   } catch (error) {
-    console.error('Error al enviar correo:', error);
+    console.error('Error al enviar correo. ❌:', error);
   }
+  
 }
 
 export async function sendConfirmationSMS(booking: any) {
@@ -75,7 +78,6 @@ export async function sendContactNotificationToAdmins(contact: any, context: any
     });
 
     if (adminUsers.length === 0) {
-      console.log('No admin users found to notify');
       return;
     }
 
@@ -117,5 +119,92 @@ export async function sendContactNotificationToAdmins(contact: any, context: any
     console.log(`Contact notification sent to ${adminUsers.length} admin users`);
   } catch (error) {
     console.error('Error sending contact notification to admins:', error);
+  }
+}
+
+export async function sendBookingNotificationToHosts(booking: any) {
+  try {
+    if (!booking.activitiesWithHost || booking.activitiesWithHost.length === 0) {
+      return;
+    }
+
+    const uniqueHosts = new Map();
+    
+    booking.activitiesWithHost.forEach((activity: any) => {
+      if (activity.host && activity.host.id) {
+        uniqueHosts.set(activity.host.id, {
+          ...activity.host,
+          activities: uniqueHosts.get(activity.host.id)?.activities || []
+        });
+        uniqueHosts.get(activity.host.id).activities.push({
+          name: activity.name,
+          link: activity.link,
+          price: activity.price
+        });
+      }
+    });
+
+    const hostsToNotify = Array.from(uniqueHosts.values());
+
+    let finalRecipients = [];
+
+    if (hostsToNotify.length > 0) {
+      finalRecipients = [hostsToNotify[0]];
+    } else {
+      return;
+    }
+
+    const emailPromises = finalRecipients.map(async (recipient: any) => {
+      const msg = {
+        to: recipient.email,
+        from: process.env.SENDGRID_FROM_EMAIL as string,
+        subject: '🎉 Nueva reservación recibida - Guimel',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">¡Nueva reservación recibida!</h2>
+            <p>Hola ${recipient.name},</p>
+            <p>Se ha realizado una nueva reservación en tu actividad:</p>
+            
+            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #555;">Detalles de la reservación:</h3>
+              <p><strong>Código de reservación:</strong> ${getBookingCode(booking)}</p>
+              <p><strong>Cliente:</strong> ${booking.user.name} ${booking.user.lastName || ''}</p>
+              <p><strong>Email del cliente:</strong> ${booking.user.email}</p>
+              <p><strong>Teléfono:</strong> ${booking.user.countryCode || ''}${booking.user.phone || 'No proporcionado'}</p>
+              <p><strong>Ubicación:</strong> ${booking.location.name}</p>
+              <p><strong>Fechas:</strong> ${new Date(booking.start_date).toLocaleDateString()} - ${new Date(booking.end_date).toLocaleDateString()}</p>
+              <p><strong>Número de huéspedes:</strong> ${booking.guests_adults}</p>
+              <p><strong>Tipo de pago:</strong> ${booking.payment_type === 'full_payment' ? 'Pago completo' : 'Solo reservación'}</p>
+            </div>
+
+            <div style="background-color: #e8f5e8; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #2d5a2d;">Actividades reservadas:</h3>
+              ${booking.activitiesWithHost.map((activity: any) => `
+                <div style="margin-bottom: 15px; padding: 10px; background-color: white; border-radius: 3px;">
+                  <p style="margin: 0;"><strong>${activity.name}</strong></p>
+                </div>
+              `).join('')}
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONT_END_URL}/dashboard" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Ver en Dashboard
+              </a>
+            </div>
+          </div>
+        `,
+      };
+
+      return sgMail.send(msg);
+    });
+
+    await Promise.all(emailPromises);
+    console.log(`✅ [HOST_NOTIFICATION] Booking notification sent to ${finalRecipients.length} recipients`);
+  } catch (error: any) {
+    console.error('❌ [HOST_NOTIFICATION] Error sending booking notification to hosts:', {
+      error: error.message,
+      stack: error.stack,
+      bookingId: booking.id
+    });
   }
 }
