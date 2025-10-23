@@ -471,14 +471,41 @@ var User_default = (0, import_core2.list)({
       field: import_core2.graphql.field({
         type: import_core2.graphql.Float,
         async resolve(item, args, context) {
-          const reviews = await context.db.Review.findMany({
-            //@ts-ignore
-            where: { user: { id: { equals: item.id } } }
+          const allReviews = await context.db.Review.findMany({
+            where: {
+              OR: [
+                //@ts-ignore
+                { activity: { hostBy: { id: { equals: item.id } } } },
+                //@ts-ignore
+                { lodging: { hostBy: { id: { equals: item.id } } } },
+                //@ts-ignore
+                { user: { id: { equals: item.id } } }
+              ]
+            }
           });
-          const ratings = reviews.map((review) => ({ rating: review.rating }));
+          const ratings = allReviews.map((review) => ({ rating: review.rating }));
           if (ratings.length === 0) return 0;
           const averageRating = ratings.reduce((sum, review) => sum + review.rating, 0) / ratings.length;
           return parseFloat(averageRating.toFixed(2));
+        }
+      })
+    }),
+    totalReviews: (0, import_fields2.virtual)({
+      field: import_core2.graphql.field({
+        type: import_core2.graphql.Int,
+        async resolve(item, args, context) {
+          return await context.db.Review.count({
+            where: {
+              OR: [
+                //@ts-ignore
+                { activity: { hostBy: { id: { equals: item.id } } } },
+                //@ts-ignore
+                { lodging: { hostBy: { id: { equals: item.id } } } },
+                //@ts-ignore
+                { user: { id: { equals: item.id } } }
+              ]
+            }
+          });
         }
       })
     }),
@@ -1452,6 +1479,7 @@ var import_fields10 = require("@keystone-6/core/fields");
 var reviewHooks = {
   resolveInput: async ({ resolvedData, item, context, operation }) => {
     if (operation === "create" && context.session?.itemId) {
+      console.log("resolvedData", resolvedData);
       return {
         ...resolvedData,
         createdBy: { connect: { id: context.session.itemId } }

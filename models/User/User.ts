@@ -61,15 +61,44 @@ export default list({
       field: graphql.field({
         type: graphql.Float,
         async resolve(item, args, context) {
-          const reviews = await context.db.Review.findMany({
-            //@ts-ignore
-            where: { user: { id: { equals: item.id } } },
+        
+          const allReviews = await context.db.Review.findMany({
+            where: {
+              OR: [
+                //@ts-ignore
+                { activity: { hostBy: { id: { equals: item.id } } } },
+                //@ts-ignore
+                { lodging: { hostBy: { id: { equals: item.id } } } },
+                //@ts-ignore
+                { user: { id: { equals: item.id } } }
+              ]
+            },
           });
-          const ratings = reviews.map(review => ({ rating: review.rating as number }));
+          const ratings = allReviews.map(review => ({ rating: review.rating as number }));
           if (ratings.length === 0) return 0;
           const averageRating =
             ratings.reduce((sum, review) => sum + review.rating, 0) / ratings.length;
           return parseFloat(averageRating.toFixed(2));
+        },
+      }),
+    }),
+    totalReviews: virtual({
+      field: graphql.field({
+        type: graphql.Int,
+        async resolve(item, args, context) {
+          //@ts-ignore
+          return await context.db.Review.count({
+            where: {
+              OR: [
+                //@ts-ignore
+                { activity: { hostBy: { id: { equals: item.id } } } },
+                //@ts-ignore
+                { lodging: { hostBy: { id: { equals: item.id } } } },
+                //@ts-ignore
+                { user: { id: { equals: item.id } } }
+              ]
+            },
+          });
         },
       }),
     }),

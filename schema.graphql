@@ -1786,6 +1786,7 @@ type User {
   booking(where: BookingWhereInput! = {}, orderBy: [BookingOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BookingWhereUniqueInput): [Booking!]
   bookingCount(where: BookingWhereInput! = {}): Int
   reviewStar: Float
+  totalReviews: Int
   reviews(where: ReviewWhereInput! = {}, orderBy: [ReviewOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReviewWhereUniqueInput): [Review!]
   reviewsCount(where: ReviewWhereInput! = {}): Int
   createdBy(where: ReviewWhereInput! = {}, orderBy: [ReviewOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReviewWhereUniqueInput): [Review!]
