@@ -2167,7 +2167,7 @@ type Mutation {
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
-  makePayment(lodgingId: String, locationId: String, activityIds: [String!]!, startDate: CalendarDay!, endDate: CalendarDay!, guestsCount: String!, nameCard: String!, email: String!, notes: String!, paymentMethodId: String!, total: String!, noDuplicatePaymentMethod: Boolean!, paymentType: String!): makePaymentType
+  makePayment(lodgingId: String, locationId: String, activityIds: [String!]!, startDate: CalendarDay!, guestsCount: String!, nameCard: String!, email: String!, notes: String!, paymentMethodId: String!, total: String!, noDuplicatePaymentMethod: Boolean!, paymentType: String!): makePaymentType
 }
 
 union UserAuthenticationWithPasswordResult = UserAuthenticationWithPasswordSuccess | UserAuthenticationWithPasswordFailure

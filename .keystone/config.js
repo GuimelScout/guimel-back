@@ -2134,7 +2134,6 @@ var definition = `
   locationId: String, 
   activityIds: [String!]!, 
   startDate: CalendarDay!, 
-  endDate: CalendarDay!,
   guestsCount: String!, 
   nameCard: String!, 
   email: String!, 
@@ -2145,12 +2144,12 @@ var definition = `
   paymentType: String!
   ): makePaymentType
 `;
-function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType }) {
+function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType }) {
   if (!activityIds || !Array.isArray(activityIds) || activityIds.length === 0) {
     throw new Error("At least one activity must be selected.");
   }
   if (!locationId) throw new Error("Location is required.");
-  if (!startDate || !endDate) throw new Error("Dates are required.");
+  if (!startDate) throw new Error("Start date is required.");
   if (!guestsCount || isNaN(Number(guestsCount)) || Number(guestsCount) <= 0) throw new Error("Number of guests must be greater than 0.");
   if (!nameCard) throw new Error("Cardholder name is required.");
   if (!email) throw new Error("Email is required.");
@@ -2213,7 +2212,6 @@ var resolver = {
     lodgingId,
     locationId,
     startDate,
-    endDate,
     guestsCount,
     nameCard,
     email,
@@ -2227,7 +2225,7 @@ var resolver = {
     let paymentId;
     let bookingId;
     try {
-      validatePaymentInput({ activityIds, lodgingId, locationId, startDate, endDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType });
+      validatePaymentInput({ activityIds, lodgingId, locationId, startDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType });
       const activities = await context.query.Activity.findMany({
         where: { id: { in: activityIds } },
         query: "id name price commission_type commission_value"
@@ -2329,7 +2327,7 @@ var resolver = {
       const booking = await context.query.Booking.createOne({
         data: {
           start_date: startDate,
-          end_date: endDate,
+          //end_date: undefined,
           guests_adults: Number(guestsCount),
           payment_type: paymentType,
           activity: { connect: activities.map((activity) => ({ id: activity.id })) },
