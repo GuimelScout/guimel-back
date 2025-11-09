@@ -10,7 +10,6 @@ import {
 } from "@keystone-6/core/fields";
 import { bookingHooks } from "./Booking.hooks";
 import access from "./Booking.access";
-import { getBookingCode } from "../../utils/helpers/bookingCode";
 
 export default list({
   access,
