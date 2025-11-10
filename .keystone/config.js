@@ -1040,9 +1040,9 @@ function getBookingCode(item) {
   const month = (fecha.getMonth() + 1).toString().padStart(2, "0");
   const anio = fecha.getFullYear() % 100;
   const dateFormat = `${day}${month}${anio}`;
-  const timestamp20 = Date.now().toString().slice(-4);
+  const timestamp21 = Date.now().toString().slice(-4);
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-  const idCode = item.id ? `${item.id.toString().slice(-4)}${timestamp20}`.toUpperCase() : `${random}${timestamp20}`.toUpperCase();
+  const idCode = item.id ? `${item.id.toString().slice(-4)}${timestamp21}`.toUpperCase() : `${random}${timestamp21}`.toUpperCase();
   return `${idCode}-${dateFormat}`;
 }
 
@@ -1631,6 +1631,22 @@ var Location_default = (0, import_core11.list)({
   fields: {
     name: (0, import_fields11.text)(),
     description: (0, import_fields11.text)({ ui: { displayMode: "textarea" } }),
+    type: (0, import_fields11.select)({
+      options: [
+        { label: "Area de Proteccion de Flora y Fauna", value: "flora_and_fauna_protection_area" },
+        { label: "Area de Protecci\xF3n de Recursos Naturales", value: "natural_resources_protection_area" },
+        { label: "Monumento Natural", value: "natural_monument" },
+        { label: "Parque Nacional", value: "national_park" },
+        { label: "Reserva de la Biosfera", value: "biosphere_reserve" },
+        { label: "Santuario", value: "sanctuary" }
+      ]
+    }),
+    technicalSheetUrl: (0, import_fields11.text)({
+      label: "Link a Ficha T\xE9cnica de la ANP",
+      ui: {
+        description: "URL para acceder a la ficha t\xE9cnica del \xC1rea Natural Protegida"
+      }
+    }),
     activity: (0, import_fields11.relationship)({
       ref: "Activity.location",
       many: true
@@ -1657,6 +1673,10 @@ var Location_default = (0, import_core11.list)({
       ref: "LocationGallery.location",
       many: true
     }),
+    services: (0, import_fields11.relationship)({
+      ref: "LocationService.location",
+      many: true
+    }),
     createdAt: (0, import_fields11.timestamp)({
       defaultValue: {
         kind: "now"
@@ -1669,16 +1689,16 @@ var Location_default = (0, import_core11.list)({
   }
 });
 
-// models/Activity/ActivityGallery.ts
+// models/Location/LocationService.ts
 var import_core12 = require("@keystone-6/core");
 var import_fields12 = require("@keystone-6/core/fields");
-var ActivityGallery_default = (0, import_core12.list)({
-  access: ActivityFieldsMany_access_default,
+var LocationService_default = (0, import_core12.list)({
+  access: Location_access_default,
   fields: {
-    description: (0, import_fields12.text)(),
-    image: (0, import_fields12.image)({ storage: "s3_files" }),
-    activity: (0, import_fields12.relationship)({
-      ref: "Activity.gallery",
+    name: (0, import_fields12.text)({ validation: { isRequired: true } }),
+    description: (0, import_fields12.text)({ ui: { displayMode: "textarea" } }),
+    location: (0, import_fields12.relationship)({
+      ref: "Location.services",
       many: true
     }),
     createdAt: (0, import_fields12.timestamp)({
@@ -1693,9 +1713,33 @@ var ActivityGallery_default = (0, import_core12.list)({
   }
 });
 
-// models/Lodging/LodgingGallery.ts
+// models/Activity/ActivityGallery.ts
 var import_core13 = require("@keystone-6/core");
 var import_fields13 = require("@keystone-6/core/fields");
+var ActivityGallery_default = (0, import_core13.list)({
+  access: ActivityFieldsMany_access_default,
+  fields: {
+    description: (0, import_fields13.text)(),
+    image: (0, import_fields13.image)({ storage: "s3_files" }),
+    activity: (0, import_fields13.relationship)({
+      ref: "Activity.gallery",
+      many: true
+    }),
+    createdAt: (0, import_fields13.timestamp)({
+      defaultValue: {
+        kind: "now"
+      },
+      ui: {
+        createView: { fieldMode: "hidden" },
+        itemView: { fieldMode: "read" }
+      }
+    })
+  }
+});
+
+// models/Lodging/LodgingGallery.ts
+var import_core14 = require("@keystone-6/core");
+var import_fields14 = require("@keystone-6/core/fields");
 
 // models/Lodging/LodgingFields.access.ts
 var access9 = {
@@ -1735,37 +1779,13 @@ var access9 = {
 var LodgingFields_access_default = access9;
 
 // models/Lodging/LodgingGallery.ts
-var LodgingGallery_default = (0, import_core13.list)({
+var LodgingGallery_default = (0, import_core14.list)({
   access: LodgingFields_access_default,
-  fields: {
-    description: (0, import_fields13.text)(),
-    image: (0, import_fields13.image)({ storage: "s3_files" }),
-    lodging: (0, import_fields13.relationship)({
-      ref: "Lodging.gallery",
-      many: true
-    }),
-    createdAt: (0, import_fields13.timestamp)({
-      defaultValue: {
-        kind: "now"
-      },
-      ui: {
-        createView: { fieldMode: "hidden" },
-        itemView: { fieldMode: "read" }
-      }
-    })
-  }
-});
-
-// models/Location/LocationGallery.ts
-var import_core14 = require("@keystone-6/core");
-var import_fields14 = require("@keystone-6/core/fields");
-var LocationGallery_default = (0, import_core14.list)({
-  access: Location_access_default,
   fields: {
     description: (0, import_fields14.text)(),
     image: (0, import_fields14.image)({ storage: "s3_files" }),
-    location: (0, import_fields14.relationship)({
-      ref: "Location.gallery",
+    lodging: (0, import_fields14.relationship)({
+      ref: "Lodging.gallery",
       many: true
     }),
     createdAt: (0, import_fields14.timestamp)({
@@ -1780,16 +1800,16 @@ var LocationGallery_default = (0, import_core14.list)({
   }
 });
 
-// models/Lodging/LodgingInclude.ts
+// models/Location/LocationGallery.ts
 var import_core15 = require("@keystone-6/core");
 var import_fields15 = require("@keystone-6/core/fields");
-var LodgingInclude_default = (0, import_core15.list)({
-  access: Lodging_access_default,
+var LocationGallery_default = (0, import_core15.list)({
+  access: Location_access_default,
   fields: {
-    name: (0, import_fields15.text)({ validation: { isRequired: true } }),
-    description: (0, import_fields15.text)({ ui: { displayMode: "textarea" } }),
-    lodging: (0, import_fields15.relationship)({
-      ref: "Lodging.includes",
+    description: (0, import_fields15.text)(),
+    image: (0, import_fields15.image)({ storage: "s3_files" }),
+    location: (0, import_fields15.relationship)({
+      ref: "Location.gallery",
       many: true
     }),
     createdAt: (0, import_fields15.timestamp)({
@@ -1804,9 +1824,33 @@ var LodgingInclude_default = (0, import_core15.list)({
   }
 });
 
-// models/Payment/Payment.ts
+// models/Lodging/LodgingInclude.ts
 var import_core16 = require("@keystone-6/core");
 var import_fields16 = require("@keystone-6/core/fields");
+var LodgingInclude_default = (0, import_core16.list)({
+  access: Lodging_access_default,
+  fields: {
+    name: (0, import_fields16.text)({ validation: { isRequired: true } }),
+    description: (0, import_fields16.text)({ ui: { displayMode: "textarea" } }),
+    lodging: (0, import_fields16.relationship)({
+      ref: "Lodging.includes",
+      many: true
+    }),
+    createdAt: (0, import_fields16.timestamp)({
+      defaultValue: {
+        kind: "now"
+      },
+      ui: {
+        createView: { fieldMode: "hidden" },
+        itemView: { fieldMode: "read" }
+      }
+    })
+  }
+});
+
+// models/Payment/Payment.ts
+var import_core17 = require("@keystone-6/core");
+var import_fields17 = require("@keystone-6/core/fields");
 
 // models/Payment/Payment.access.ts
 var access10 = {
@@ -1846,14 +1890,14 @@ var access10 = {
 var Payment_access_default = access10;
 
 // models/Payment/Payment.ts
-var Payment_default = (0, import_core16.list)({
+var Payment_default = (0, import_core17.list)({
   access: Payment_access_default,
   fields: {
-    amount: (0, import_fields16.decimal)({
+    amount: (0, import_fields17.decimal)({
       scale: 6,
       defaultValue: "0.000000"
     }),
-    status: (0, import_fields16.select)({
+    status: (0, import_fields17.select)({
       type: "enum",
       validation: {
         isRequired: true
@@ -1868,31 +1912,31 @@ var Payment_default = (0, import_core16.list)({
         { label: "Devuelto", value: "refunded" }
       ]
     }),
-    processorStripeChargeId: (0, import_fields16.text)(),
-    stripeErrorMessage: (0, import_fields16.text)({
+    processorStripeChargeId: (0, import_fields17.text)(),
+    stripeErrorMessage: (0, import_fields17.text)({
       ui: {
         displayMode: "textarea"
       }
     }),
-    processorRefundId: (0, import_fields16.text)(),
-    notes: (0, import_fields16.text)(),
-    activity: (0, import_fields16.relationship)({
+    processorRefundId: (0, import_fields17.text)(),
+    notes: (0, import_fields17.text)(),
+    activity: (0, import_fields17.relationship)({
       ref: "Activity.payment",
       many: true
     }),
-    lodging: (0, import_fields16.relationship)({
+    lodging: (0, import_fields17.relationship)({
       ref: "Lodging.payment"
     }),
-    user: (0, import_fields16.relationship)({
+    user: (0, import_fields17.relationship)({
       ref: "User.payment"
     }),
-    booking: (0, import_fields16.relationship)({
+    booking: (0, import_fields17.relationship)({
       ref: "Booking.payment"
     }),
-    paymentMethod: (0, import_fields16.relationship)({
+    paymentMethod: (0, import_fields17.relationship)({
       ref: "PaymentMethod.payment"
     }),
-    createdAt: (0, import_fields16.timestamp)({
+    createdAt: (0, import_fields17.timestamp)({
       defaultValue: {
         kind: "now"
       },
@@ -1905,32 +1949,32 @@ var Payment_default = (0, import_core16.list)({
 });
 
 // models/Payment/PaymentMethod.ts
-var import_fields17 = require("@keystone-6/core/fields");
-var import_core17 = require("@keystone-6/core");
-var PaymentMethod_default = (0, import_core17.list)({
+var import_fields18 = require("@keystone-6/core/fields");
+var import_core18 = require("@keystone-6/core");
+var PaymentMethod_default = (0, import_core18.list)({
   access: Payment_access_default,
   fields: {
-    cardType: (0, import_fields17.text)(),
-    isDefault: (0, import_fields17.checkbox)(),
-    lastFourDigits: (0, import_fields17.text)(),
-    expMonth: (0, import_fields17.text)(),
-    expYear: (0, import_fields17.text)(),
-    stripeProcessorId: (0, import_fields17.text)(),
-    stripePaymentMethodId: (0, import_fields17.text)({ isIndexed: "unique" }),
-    address: (0, import_fields17.text)(),
-    postalCode: (0, import_fields17.text)(),
-    ownerName: (0, import_fields17.text)(),
-    country: (0, import_fields17.text)(),
+    cardType: (0, import_fields18.text)(),
+    isDefault: (0, import_fields18.checkbox)(),
+    lastFourDigits: (0, import_fields18.text)(),
+    expMonth: (0, import_fields18.text)(),
+    expYear: (0, import_fields18.text)(),
+    stripeProcessorId: (0, import_fields18.text)(),
+    stripePaymentMethodId: (0, import_fields18.text)({ isIndexed: "unique" }),
+    address: (0, import_fields18.text)(),
+    postalCode: (0, import_fields18.text)(),
+    ownerName: (0, import_fields18.text)(),
+    country: (0, import_fields18.text)(),
     // Two-letter country code (ISO 3166-1 alpha-2).
-    payment: (0, import_fields17.relationship)({
+    payment: (0, import_fields18.relationship)({
       ref: "Payment.paymentMethod",
       many: true
     }),
-    user: (0, import_fields17.relationship)({
+    user: (0, import_fields18.relationship)({
       ref: "User.paymentMethod",
       many: true
     }),
-    createdAt: (0, import_fields17.timestamp)({
+    createdAt: (0, import_fields18.timestamp)({
       defaultValue: {
         kind: "now"
       },
@@ -1939,7 +1983,7 @@ var PaymentMethod_default = (0, import_core17.list)({
         itemView: { fieldMode: "read" }
       }
     }),
-    updatedAt: (0, import_fields17.timestamp)({
+    updatedAt: (0, import_fields18.timestamp)({
       defaultValue: { kind: "now" },
       db: { updatedAt: true }
     })
@@ -1947,8 +1991,8 @@ var PaymentMethod_default = (0, import_core17.list)({
 });
 
 // models/Role/Role.ts
-var import_core18 = require("@keystone-6/core");
-var import_fields18 = require("@keystone-6/core/fields");
+var import_core19 = require("@keystone-6/core");
+var import_fields19 = require("@keystone-6/core/fields");
 
 // models/Role/Role.access.ts
 var access11 = {
@@ -1972,22 +2016,22 @@ var access11 = {
 var Role_access_default = access11;
 
 // models/Role/Role.ts
-var Role_default = (0, import_core18.list)({
+var Role_default = (0, import_core19.list)({
   access: Role_access_default,
   fields: {
-    name: (0, import_fields18.select)({
+    name: (0, import_fields19.select)({
       options: role_options,
       isIndexed: "unique",
       validation: { isRequired: true }
     }),
-    user: (0, import_fields18.relationship)({
+    user: (0, import_fields19.relationship)({
       ref: "User.role",
       many: true,
       access: {
         update: ({ session: session2 }) => hasRole(session2, ["admin" /* ADMIN */])
       }
     }),
-    createdAt: (0, import_fields18.timestamp)({
+    createdAt: (0, import_fields19.timestamp)({
       defaultValue: {
         kind: "now"
       },
@@ -2000,8 +2044,8 @@ var Role_default = (0, import_core18.list)({
 });
 
 // models/Contact/Contact.ts
-var import_core19 = require("@keystone-6/core");
-var import_fields19 = require("@keystone-6/core/fields");
+var import_core20 = require("@keystone-6/core");
+var import_fields20 = require("@keystone-6/core/fields");
 
 // models/Contact/Contact.hooks.ts
 var contactHooks = {
@@ -2038,15 +2082,15 @@ var access12 = {
 var Contact_access_default = access12;
 
 // models/Contact/Contact.ts
-var Contact_default = (0, import_core19.list)({
+var Contact_default = (0, import_core20.list)({
   access: Contact_access_default,
   hooks: contactHooks,
   fields: {
-    name: (0, import_fields19.text)(),
-    email: (0, import_fields19.text)(),
-    phone: (0, import_fields19.text)(),
-    message: (0, import_fields19.text)({ ui: { displayMode: "textarea" } }),
-    createdAt: (0, import_fields19.timestamp)({
+    name: (0, import_fields20.text)(),
+    email: (0, import_fields20.text)(),
+    phone: (0, import_fields20.text)(),
+    message: (0, import_fields20.text)({ ui: { displayMode: "textarea" } }),
+    createdAt: (0, import_fields20.timestamp)({
       defaultValue: {
         kind: "now"
       },
@@ -2069,6 +2113,7 @@ var schema_default = {
   Booking: Booking_default,
   Location: Location_default,
   LocationGallery: LocationGallery_default,
+  LocationService: LocationService_default,
   Lodging: Lodging_default,
   LodgingType: LodgingType_default,
   LodgingGallery: LodgingGallery_default,
@@ -2082,7 +2127,7 @@ var schema_default = {
 };
 
 // keystone.ts
-var import_core20 = require("@keystone-6/core");
+var import_core21 = require("@keystone-6/core");
 
 // auth/auth.ts
 var import_crypto = require("crypto");
@@ -2591,7 +2636,7 @@ var {
   S3_SECRET_ACCESS_KEY: secretAccessKey = ""
 } = process.env;
 var keystone_default = withAuth(
-  (0, import_core20.config)({
+  (0, import_core21.config)({
     db: {
       provider: "postgresql",
       url: `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}`
