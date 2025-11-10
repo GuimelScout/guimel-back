@@ -9,6 +9,7 @@ import ActivityAvailableDay from "./Activity/ActivityAvailableDay";
 import Booking from "./Booking/Booking";
 import Review from "./Review/Review";
 import Location from "./Location/Location";
+import LocationService from "./Location/LocationService";
 import ActivityGallery from "./Activity/ActivityGallery";
 import LodgingGallery from "./Lodging/LodgingGallery";
 import LocationGallery from "./Location/LocationGallery";
@@ -28,6 +29,7 @@ export default {
   Booking,
   Location,
   LocationGallery,
+  LocationService,
   Lodging,
   LodgingType,
   LodgingGallery,

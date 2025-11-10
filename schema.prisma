@@ -125,20 +125,23 @@ model Booking {
 }
 
 model Location {
-  id              String            @id @default(cuid())
-  name            String            @default("")
-  description     String            @default("")
-  activity        Activity[]        @relation("Activity_location")
-  lodging         Lodging[]         @relation("Location_lodging")
-  booking         Booking[]         @relation("Booking_location")
-  image_id        String?
-  image_filesize  Int?
-  image_width     Int?
-  image_height    Int?
-  image_extension String?
-  link            String            @unique @default("")
-  gallery         LocationGallery[] @relation("Location_gallery")
-  createdAt       DateTime?         @default(now())
+  id                String            @id @default(cuid())
+  name              String            @default("")
+  description       String            @default("")
+  type              String?
+  technicalSheetUrl String            @default("")
+  activity          Activity[]        @relation("Activity_location")
+  lodging           Lodging[]         @relation("Location_lodging")
+  booking           Booking[]         @relation("Booking_location")
+  image_id          String?
+  image_filesize    Int?
+  image_width       Int?
+  image_height      Int?
+  image_extension   String?
+  link              String            @unique @default("")
+  gallery           LocationGallery[] @relation("Location_gallery")
+  services          LocationService[] @relation("Location_services")
+  createdAt         DateTime?         @default(now())
 }
 
 model LocationGallery {
@@ -151,6 +154,14 @@ model LocationGallery {
   image_extension String?
   location        Location[] @relation("Location_gallery")
   createdAt       DateTime?  @default(now())
+}
+
+model LocationService {
+  id          String     @id @default(cuid())
+  name        String     @default("")
+  description String     @default("")
+  location    Location[] @relation("Location_services")
+  createdAt   DateTime?  @default(now())
 }
 
 model Lodging {

@@ -924,6 +924,8 @@ type Location {
   id: ID!
   name: String
   description: String
+  type: String
+  technicalSheetUrl: String
   activity(where: ActivityWhereInput! = {}, orderBy: [ActivityOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ActivityWhereUniqueInput): [Activity!]
   activityCount(where: ActivityWhereInput! = {}): Int
   lodging(where: LodgingWhereInput! = {}, orderBy: [LodgingOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LodgingWhereUniqueInput): [Lodging!]
@@ -934,6 +936,8 @@ type Location {
   link: String
   gallery(where: LocationGalleryWhereInput! = {}, orderBy: [LocationGalleryOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LocationGalleryWhereUniqueInput): [LocationGallery!]
   galleryCount(where: LocationGalleryWhereInput! = {}): Int
+  services(where: LocationServiceWhereInput! = {}, orderBy: [LocationServiceOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LocationServiceWhereUniqueInput): [LocationService!]
+  servicesCount(where: LocationServiceWhereInput! = {}): Int
   createdAt: DateTime
 }
 
@@ -949,12 +953,30 @@ input LocationWhereInput {
   id: IDFilter
   name: StringFilter
   description: StringFilter
+  type: StringNullableFilter
+  technicalSheetUrl: StringFilter
   activity: ActivityManyRelationFilter
   lodging: LodgingManyRelationFilter
   booking: BookingManyRelationFilter
   link: StringFilter
   gallery: LocationGalleryManyRelationFilter
+  services: LocationServiceManyRelationFilter
   createdAt: DateTimeNullableFilter
+}
+
+input StringNullableFilter {
+  equals: String
+  in: [String!]
+  notIn: [String!]
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  contains: String
+  startsWith: String
+  endsWith: String
+  mode: QueryMode
+  not: StringNullableFilter
 }
 
 input LocationGalleryManyRelationFilter {
@@ -963,10 +985,18 @@ input LocationGalleryManyRelationFilter {
   none: LocationGalleryWhereInput
 }
 
+input LocationServiceManyRelationFilter {
+  every: LocationServiceWhereInput
+  some: LocationServiceWhereInput
+  none: LocationServiceWhereInput
+}
+
 input LocationOrderByInput {
   id: OrderDirection
   name: OrderDirection
   description: OrderDirection
+  type: OrderDirection
+  technicalSheetUrl: OrderDirection
   link: OrderDirection
   createdAt: OrderDirection
 }
@@ -974,12 +1004,15 @@ input LocationOrderByInput {
 input LocationUpdateInput {
   name: String
   description: String
+  type: String
+  technicalSheetUrl: String
   activity: ActivityRelateToManyForUpdateInput
   lodging: LodgingRelateToManyForUpdateInput
   booking: BookingRelateToManyForUpdateInput
   image: ImageFieldInput
   link: String
   gallery: LocationGalleryRelateToManyForUpdateInput
+  services: LocationServiceRelateToManyForUpdateInput
   createdAt: DateTime
 }
 
@@ -990,6 +1023,13 @@ input LocationGalleryRelateToManyForUpdateInput {
   connect: [LocationGalleryWhereUniqueInput!]
 }
 
+input LocationServiceRelateToManyForUpdateInput {
+  disconnect: [LocationServiceWhereUniqueInput!]
+  set: [LocationServiceWhereUniqueInput!]
+  create: [LocationServiceCreateInput!]
+  connect: [LocationServiceWhereUniqueInput!]
+}
+
 input LocationUpdateArgs {
   where: LocationWhereUniqueInput!
   data: LocationUpdateInput!
@@ -998,18 +1038,26 @@ input LocationUpdateArgs {
 input LocationCreateInput {
   name: String
   description: String
+  type: String
+  technicalSheetUrl: String
   activity: ActivityRelateToManyForCreateInput
   lodging: LodgingRelateToManyForCreateInput
   booking: BookingRelateToManyForCreateInput
   image: ImageFieldInput
   link: String
   gallery: LocationGalleryRelateToManyForCreateInput
+  services: LocationServiceRelateToManyForCreateInput
   createdAt: DateTime
 }
 
 input LocationGalleryRelateToManyForCreateInput {
   create: [LocationGalleryCreateInput!]
   connect: [LocationGalleryWhereUniqueInput!]
+}
+
+input LocationServiceRelateToManyForCreateInput {
+  create: [LocationServiceCreateInput!]
+  connect: [LocationServiceWhereUniqueInput!]
 }
 
 type LocationGallery {
@@ -1056,6 +1104,56 @@ input LocationGalleryUpdateArgs {
 input LocationGalleryCreateInput {
   description: String
   image: ImageFieldInput
+  location: LocationRelateToManyForCreateInput
+  createdAt: DateTime
+}
+
+type LocationService {
+  id: ID!
+  name: String
+  description: String
+  location(where: LocationWhereInput! = {}, orderBy: [LocationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LocationWhereUniqueInput): [Location!]
+  locationCount(where: LocationWhereInput! = {}): Int
+  createdAt: DateTime
+}
+
+input LocationServiceWhereUniqueInput {
+  id: ID
+}
+
+input LocationServiceWhereInput {
+  AND: [LocationServiceWhereInput!]
+  OR: [LocationServiceWhereInput!]
+  NOT: [LocationServiceWhereInput!]
+  id: IDFilter
+  name: StringFilter
+  description: StringFilter
+  location: LocationManyRelationFilter
+  createdAt: DateTimeNullableFilter
+}
+
+input LocationServiceOrderByInput {
+  id: OrderDirection
+  name: OrderDirection
+  description: OrderDirection
+  createdAt: OrderDirection
+}
+
+input LocationServiceUpdateInput {
+  name: String
+  description: String
+  location: LocationRelateToManyForUpdateInput
+  createdAt: DateTime
+}
+
+input LocationServiceUpdateArgs {
+  where: LocationServiceWhereUniqueInput!
+  data: LocationServiceUpdateInput!
+}
+
+input LocationServiceCreateInput {
+  name: String
+  description: String
   location: LocationRelateToManyForCreateInput
   createdAt: DateTime
 }
@@ -2104,6 +2202,12 @@ type Mutation {
   updateLocationGalleries(data: [LocationGalleryUpdateArgs!]!): [LocationGallery]
   deleteLocationGallery(where: LocationGalleryWhereUniqueInput!): LocationGallery
   deleteLocationGalleries(where: [LocationGalleryWhereUniqueInput!]!): [LocationGallery]
+  createLocationService(data: LocationServiceCreateInput!): LocationService
+  createLocationServices(data: [LocationServiceCreateInput!]!): [LocationService]
+  updateLocationService(where: LocationServiceWhereUniqueInput!, data: LocationServiceUpdateInput!): LocationService
+  updateLocationServices(data: [LocationServiceUpdateArgs!]!): [LocationService]
+  deleteLocationService(where: LocationServiceWhereUniqueInput!): LocationService
+  deleteLocationServices(where: [LocationServiceWhereUniqueInput!]!): [LocationService]
   createLodging(data: LodgingCreateInput!): Lodging
   createLodgings(data: [LodgingCreateInput!]!): [Lodging]
   updateLodging(where: LodgingWhereUniqueInput!, data: LodgingUpdateInput!): Lodging
@@ -2217,6 +2321,9 @@ type Query {
   locationGallery(where: LocationGalleryWhereUniqueInput!): LocationGallery
   locationGalleries(where: LocationGalleryWhereInput! = {}, orderBy: [LocationGalleryOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LocationGalleryWhereUniqueInput): [LocationGallery!]
   locationGalleriesCount(where: LocationGalleryWhereInput! = {}): Int
+  locationService(where: LocationServiceWhereUniqueInput!): LocationService
+  locationServices(where: LocationServiceWhereInput! = {}, orderBy: [LocationServiceOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LocationServiceWhereUniqueInput): [LocationService!]
+  locationServicesCount(where: LocationServiceWhereInput! = {}): Int
   lodging(where: LodgingWhereUniqueInput!): Lodging
   lodgings(where: LodgingWhereInput! = {}, orderBy: [LodgingOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LodgingWhereUniqueInput): [Lodging!]
   lodgingsCount(where: LodgingWhereInput! = {}): Int
