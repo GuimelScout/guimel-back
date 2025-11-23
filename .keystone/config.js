@@ -142,38 +142,71 @@ function calculateTotalPrice(basePrice, commissionType, commissionValue) {
 }
 function calculateStripeFee(amount) {
   const amt = parseFloat(amount.toString());
-  return parseFloat((amt * 0.036 + 3).toFixed(2));
+  return Math.round((amt * 0.036 + 3) * 100) / 100;
 }
 function calculatePaymentBreakdownWithGuests(basePrice, commissionType, commissionValue, paymentType, guestsCount) {
   const pricePerGuest = parseFloat(basePrice.toString());
-  const totalBasePrice = pricePerGuest * guestsCount;
-  let commission = 0;
+  let commissionPerGuest = 0;
   if (commissionType === "percentage") {
-    commission = totalBasePrice * (parseFloat(commissionValue.toString()) / 100);
+    const commissionCalc = pricePerGuest * parseFloat(commissionValue.toString()) / 100;
+    commissionPerGuest = Math.round(commissionCalc * 100) / 100;
   } else {
-    commission = parseFloat(commissionValue.toString());
+    commissionPerGuest = parseFloat(commissionValue.toString());
   }
-  const totalPrice = totalBasePrice + commission;
-  const stripeFee = calculateStripeFee(totalPrice);
+  const pricePlusCommissionPerGuest = pricePerGuest + commissionPerGuest;
+  const totalPricePlusCommission = pricePlusCommissionPerGuest * guestsCount;
+  const stripeFee = calculateStripeFee(totalPricePlusCommission);
+  const totalBasePrice = pricePerGuest * guestsCount;
+  const totalCommission = commissionPerGuest * guestsCount;
+  const totalCommissionAmount = Math.round((totalCommission + stripeFee) * 100) / 100;
   if (paymentType === "full_payment") {
+    const payNow = Math.round((totalPricePlusCommission + stripeFee) * 100) / 100;
     return {
-      payNow: parseFloat((totalPrice + stripeFee).toFixed(2)),
+      payNow,
       payAtProperty: 0,
       basePrice: parseFloat(totalBasePrice.toFixed(2)),
-      commission: parseFloat(commission.toFixed(2)),
+      commission: parseFloat(totalCommission.toFixed(2)),
       stripeFee: parseFloat(stripeFee.toFixed(2)),
-      totalCommission: parseFloat((commission + stripeFee).toFixed(2))
+      totalCommission: parseFloat(totalCommissionAmount.toFixed(2))
     };
   } else {
+    const payNow = Math.round(totalCommissionAmount * 100) / 100;
     return {
-      payNow: parseFloat((commission + stripeFee).toFixed(2)),
+      payNow,
       payAtProperty: parseFloat(totalBasePrice.toFixed(2)),
       basePrice: parseFloat(totalBasePrice.toFixed(2)),
-      commission: parseFloat(commission.toFixed(2)),
+      commission: parseFloat(totalCommission.toFixed(2)),
       stripeFee: parseFloat(stripeFee.toFixed(2)),
-      totalCommission: parseFloat((commission + stripeFee).toFixed(2))
+      totalCommission: parseFloat(totalCommissionAmount.toFixed(2))
     };
   }
+}
+function calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType) {
+  let total = 0;
+  const guests = Number(guestsCount);
+  if (activities.length > 0) {
+    activities.forEach((activity, index) => {
+      const breakdown = calculatePaymentBreakdownWithGuests(
+        activity.price,
+        activity.commission_type,
+        activity.commission_value,
+        paymentType,
+        guests
+      );
+      total += breakdown.payNow;
+    });
+  }
+  if (lodging) {
+    const breakdown = calculatePaymentBreakdownWithGuests(
+      lodging.price,
+      lodging.commission_type,
+      lodging.commission_value,
+      paymentType,
+      guests
+    );
+    total += breakdown.payNow;
+  }
+  return total;
 }
 
 // models/Lodging/Lodging.ts
@@ -205,6 +238,28 @@ var Lodging_default = (0, import_core.list)({
           );
         }
       })
+    }),
+    type_day: (0, import_fields.select)({
+      options: [
+        { label: "Un d\xEDa", value: "one_day" },
+        { label: "Cualquier d\xEDa", value: "any_day" },
+        { label: "Solo entre semana", value: "weekdays" },
+        { label: "Solo fines de semana", value: "weekends" },
+        { label: "Rango de fechas", value: "date_range" },
+        { label: "Algunos d\xEDas", value: "some_days" }
+        // when user select some_days, AvailableDays save the info
+      ],
+      defaultValue: "any_day",
+      ui: {
+        description: "Select the type of day the lodging is available. If you select 'some_days', you must select the days in the AvailableDays section."
+      }
+    }),
+    available_days: (0, import_fields.relationship)({
+      ref: "LodgingAvailableDay.lodging",
+      many: true,
+      ui: {
+        description: "Select the days the lodging is available only if you select 'some_days' in the Type day section."
+      }
     }),
     status: (0, import_fields.select)({
       options: [
@@ -1040,9 +1095,9 @@ function getBookingCode(item) {
   const month = (fecha.getMonth() + 1).toString().padStart(2, "0");
   const anio = fecha.getFullYear() % 100;
   const dateFormat = `${day}${month}${anio}`;
-  const timestamp21 = Date.now().toString().slice(-4);
+  const timestamp22 = Date.now().toString().slice(-4);
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-  const idCode = item.id ? `${item.id.toString().slice(-4)}${timestamp21}`.toUpperCase() : `${random}${timestamp21}`.toUpperCase();
+  const idCode = item.id ? `${item.id.toString().slice(-4)}${timestamp22}`.toUpperCase() : `${random}${timestamp22}`.toUpperCase();
   return `${idCode}-${dateFormat}`;
 }
 
@@ -1848,9 +1903,31 @@ var LodgingInclude_default = (0, import_core16.list)({
   }
 });
 
-// models/Payment/Payment.ts
+// models/Lodging/LodgingAvailableDay.ts
 var import_core17 = require("@keystone-6/core");
 var import_fields17 = require("@keystone-6/core/fields");
+var LodgingAvailableDay_default = (0, import_core17.list)({
+  access: LodgingFields_access_default,
+  fields: {
+    day: (0, import_fields17.calendarDay)(),
+    lodging: (0, import_fields17.relationship)({
+      ref: "Lodging.available_days"
+    }),
+    createdAt: (0, import_fields17.timestamp)({
+      defaultValue: {
+        kind: "now"
+      },
+      ui: {
+        createView: { fieldMode: "hidden" },
+        itemView: { fieldMode: "read" }
+      }
+    })
+  }
+});
+
+// models/Payment/Payment.ts
+var import_core18 = require("@keystone-6/core");
+var import_fields18 = require("@keystone-6/core/fields");
 
 // models/Payment/Payment.access.ts
 var access10 = {
@@ -1890,14 +1967,14 @@ var access10 = {
 var Payment_access_default = access10;
 
 // models/Payment/Payment.ts
-var Payment_default = (0, import_core17.list)({
+var Payment_default = (0, import_core18.list)({
   access: Payment_access_default,
   fields: {
-    amount: (0, import_fields17.decimal)({
+    amount: (0, import_fields18.decimal)({
       scale: 6,
       defaultValue: "0.000000"
     }),
-    status: (0, import_fields17.select)({
+    status: (0, import_fields18.select)({
       type: "enum",
       validation: {
         isRequired: true
@@ -1912,31 +1989,31 @@ var Payment_default = (0, import_core17.list)({
         { label: "Devuelto", value: "refunded" }
       ]
     }),
-    processorStripeChargeId: (0, import_fields17.text)(),
-    stripeErrorMessage: (0, import_fields17.text)({
+    processorStripeChargeId: (0, import_fields18.text)(),
+    stripeErrorMessage: (0, import_fields18.text)({
       ui: {
         displayMode: "textarea"
       }
     }),
-    processorRefundId: (0, import_fields17.text)(),
-    notes: (0, import_fields17.text)(),
-    activity: (0, import_fields17.relationship)({
+    processorRefundId: (0, import_fields18.text)(),
+    notes: (0, import_fields18.text)(),
+    activity: (0, import_fields18.relationship)({
       ref: "Activity.payment",
       many: true
     }),
-    lodging: (0, import_fields17.relationship)({
+    lodging: (0, import_fields18.relationship)({
       ref: "Lodging.payment"
     }),
-    user: (0, import_fields17.relationship)({
+    user: (0, import_fields18.relationship)({
       ref: "User.payment"
     }),
-    booking: (0, import_fields17.relationship)({
+    booking: (0, import_fields18.relationship)({
       ref: "Booking.payment"
     }),
-    paymentMethod: (0, import_fields17.relationship)({
+    paymentMethod: (0, import_fields18.relationship)({
       ref: "PaymentMethod.payment"
     }),
-    createdAt: (0, import_fields17.timestamp)({
+    createdAt: (0, import_fields18.timestamp)({
       defaultValue: {
         kind: "now"
       },
@@ -1949,32 +2026,32 @@ var Payment_default = (0, import_core17.list)({
 });
 
 // models/Payment/PaymentMethod.ts
-var import_fields18 = require("@keystone-6/core/fields");
-var import_core18 = require("@keystone-6/core");
-var PaymentMethod_default = (0, import_core18.list)({
+var import_fields19 = require("@keystone-6/core/fields");
+var import_core19 = require("@keystone-6/core");
+var PaymentMethod_default = (0, import_core19.list)({
   access: Payment_access_default,
   fields: {
-    cardType: (0, import_fields18.text)(),
-    isDefault: (0, import_fields18.checkbox)(),
-    lastFourDigits: (0, import_fields18.text)(),
-    expMonth: (0, import_fields18.text)(),
-    expYear: (0, import_fields18.text)(),
-    stripeProcessorId: (0, import_fields18.text)(),
-    stripePaymentMethodId: (0, import_fields18.text)({ isIndexed: "unique" }),
-    address: (0, import_fields18.text)(),
-    postalCode: (0, import_fields18.text)(),
-    ownerName: (0, import_fields18.text)(),
-    country: (0, import_fields18.text)(),
+    cardType: (0, import_fields19.text)(),
+    isDefault: (0, import_fields19.checkbox)(),
+    lastFourDigits: (0, import_fields19.text)(),
+    expMonth: (0, import_fields19.text)(),
+    expYear: (0, import_fields19.text)(),
+    stripeProcessorId: (0, import_fields19.text)(),
+    stripePaymentMethodId: (0, import_fields19.text)({ isIndexed: "unique" }),
+    address: (0, import_fields19.text)(),
+    postalCode: (0, import_fields19.text)(),
+    ownerName: (0, import_fields19.text)(),
+    country: (0, import_fields19.text)(),
     // Two-letter country code (ISO 3166-1 alpha-2).
-    payment: (0, import_fields18.relationship)({
+    payment: (0, import_fields19.relationship)({
       ref: "Payment.paymentMethod",
       many: true
     }),
-    user: (0, import_fields18.relationship)({
+    user: (0, import_fields19.relationship)({
       ref: "User.paymentMethod",
       many: true
     }),
-    createdAt: (0, import_fields18.timestamp)({
+    createdAt: (0, import_fields19.timestamp)({
       defaultValue: {
         kind: "now"
       },
@@ -1983,7 +2060,7 @@ var PaymentMethod_default = (0, import_core18.list)({
         itemView: { fieldMode: "read" }
       }
     }),
-    updatedAt: (0, import_fields18.timestamp)({
+    updatedAt: (0, import_fields19.timestamp)({
       defaultValue: { kind: "now" },
       db: { updatedAt: true }
     })
@@ -1991,8 +2068,8 @@ var PaymentMethod_default = (0, import_core18.list)({
 });
 
 // models/Role/Role.ts
-var import_core19 = require("@keystone-6/core");
-var import_fields19 = require("@keystone-6/core/fields");
+var import_core20 = require("@keystone-6/core");
+var import_fields20 = require("@keystone-6/core/fields");
 
 // models/Role/Role.access.ts
 var access11 = {
@@ -2016,22 +2093,22 @@ var access11 = {
 var Role_access_default = access11;
 
 // models/Role/Role.ts
-var Role_default = (0, import_core19.list)({
+var Role_default = (0, import_core20.list)({
   access: Role_access_default,
   fields: {
-    name: (0, import_fields19.select)({
+    name: (0, import_fields20.select)({
       options: role_options,
       isIndexed: "unique",
       validation: { isRequired: true }
     }),
-    user: (0, import_fields19.relationship)({
+    user: (0, import_fields20.relationship)({
       ref: "User.role",
       many: true,
       access: {
         update: ({ session: session2 }) => hasRole(session2, ["admin" /* ADMIN */])
       }
     }),
-    createdAt: (0, import_fields19.timestamp)({
+    createdAt: (0, import_fields20.timestamp)({
       defaultValue: {
         kind: "now"
       },
@@ -2044,8 +2121,8 @@ var Role_default = (0, import_core19.list)({
 });
 
 // models/Contact/Contact.ts
-var import_core20 = require("@keystone-6/core");
-var import_fields20 = require("@keystone-6/core/fields");
+var import_core21 = require("@keystone-6/core");
+var import_fields21 = require("@keystone-6/core/fields");
 
 // models/Contact/Contact.hooks.ts
 var contactHooks = {
@@ -2082,15 +2159,15 @@ var access12 = {
 var Contact_access_default = access12;
 
 // models/Contact/Contact.ts
-var Contact_default = (0, import_core20.list)({
+var Contact_default = (0, import_core21.list)({
   access: Contact_access_default,
   hooks: contactHooks,
   fields: {
-    name: (0, import_fields20.text)(),
-    email: (0, import_fields20.text)(),
-    phone: (0, import_fields20.text)(),
-    message: (0, import_fields20.text)({ ui: { displayMode: "textarea" } }),
-    createdAt: (0, import_fields20.timestamp)({
+    name: (0, import_fields21.text)(),
+    email: (0, import_fields21.text)(),
+    phone: (0, import_fields21.text)(),
+    message: (0, import_fields21.text)({ ui: { displayMode: "textarea" } }),
+    createdAt: (0, import_fields21.timestamp)({
       defaultValue: {
         kind: "now"
       },
@@ -2118,6 +2195,7 @@ var schema_default = {
   LodgingType: LodgingType_default,
   LodgingGallery: LodgingGallery_default,
   LodgingInclude: LodgingInclude_default,
+  LodgingAvailableDay: LodgingAvailableDay_default,
   Payment: Payment_default,
   PaymentMethod: PaymentMethod_default,
   Review: Review_default,
@@ -2127,7 +2205,7 @@ var schema_default = {
 };
 
 // keystone.ts
-var import_core21 = require("@keystone-6/core");
+var import_core22 = require("@keystone-6/core");
 
 // auth/auth.ts
 var import_crypto = require("crypto");
@@ -2190,9 +2268,6 @@ var definition = `
   ): makePaymentType
 `;
 function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType }) {
-  if (!activityIds || !Array.isArray(activityIds) || activityIds.length === 0) {
-    throw new Error("At least one activity must be selected.");
-  }
   if (!locationId) throw new Error("Location is required.");
   if (!startDate) throw new Error("Start date is required.");
   if (!guestsCount || isNaN(Number(guestsCount)) || Number(guestsCount) <= 0) throw new Error("Number of guests must be greater than 0.");
@@ -2204,46 +2279,22 @@ function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, g
     throw new Error("Payment type must be 'full_payment' or 'commission_only'.");
   }
 }
-function calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType) {
-  let total = 0;
-  const guests = Number(guestsCount);
-  activities.forEach((activity, index) => {
-    const breakdown = calculatePaymentBreakdownWithGuests(
-      activity.price,
-      activity.commission_type,
-      activity.commission_value,
-      paymentType,
-      guests
-    );
-    total += breakdown.payNow;
-  });
-  if (lodging) {
-    const breakdown = calculatePaymentBreakdownWithGuests(
-      lodging.price,
-      lodging.commission_type,
-      lodging.commission_value,
-      paymentType,
-      guests
-    );
-    total += breakdown.payNow;
-  }
-  return total;
-}
-async function createStripePaymentIntent({ total, user, paymentMethod, activityNames, activityIds, lodgingId }) {
+async function createStripePaymentIntent({ total, user, paymentMethod, activityNames, activityIds, lodgingId, lodgingName }) {
   const amountInCents = Math.round(Number(total) * 100);
+  const description = activityNames ? `Payment for activities: ${activityNames} (${activityIds})` : `Payment for lodging: ${lodgingName || "N/A"}`;
   try {
     const paymentIntent = await stripe_default.paymentIntents.create({
       amount: amountInCents,
       currency: "mxn",
       customer: user.stripeCustomerId,
       payment_method: paymentMethod.stripePaymentMethodId,
-      description: `Payment for activities: ${activityNames} (${activityIds})`,
+      description,
       confirm: false,
       // Don't confirm immediately, keep in processing state
       metadata: {
         paymentMethod: paymentMethod.id,
-        activityIds,
-        lodgingId
+        activityIds: activityIds || "",
+        lodgingId: lodgingId || ""
       }
     });
     return paymentIntent;
@@ -2271,11 +2322,15 @@ var resolver = {
     let bookingId;
     try {
       validatePaymentInput({ activityIds, lodgingId, locationId, startDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType });
-      const activities = await context.query.Activity.findMany({
-        where: { id: { in: activityIds } },
-        query: "id name price commission_type commission_value"
-      });
-      if (!activities || activities.length === 0) throw new Error("No valid activities found.");
+      let activities = [];
+      if (activityIds.length > 0) {
+        const acts = await context.query.Activity.findMany({
+          where: { id: { in: activityIds } },
+          query: "id name price commission_type commission_value"
+        });
+        activities = acts;
+        if (!activities || activities.length === 0) throw new Error("No valid activities found.");
+      }
       let lodging = void 0;
       if (lodgingId) {
         lodging = await context.query.Lodging.findOne({
@@ -2287,9 +2342,10 @@ var resolver = {
       const totalInBack = calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType);
       const roundedTotalInBack = parseFloat(totalInBack.toFixed(2));
       const roundedFrontendTotal = parseFloat(Number(total).toFixed(2));
-      if (roundedFrontendTotal !== roundedTotalInBack) {
+      const difference = Math.abs(roundedFrontendTotal - roundedTotalInBack);
+      if (difference > 0.01) {
         return {
-          message: `Communication error, please reload the page and try again.`,
+          message: `Communication error, please reload the page and try again. Total mismatch: Frontend=${roundedFrontendTotal}, Backend=${roundedTotalInBack}, Difference=${difference}`,
           success: false
         };
       }
@@ -2327,8 +2383,8 @@ var resolver = {
           }
         });
       }
-      const activityNames = activities.map((activity) => activity.name).join(", ");
-      const activityIdsStr = activities.map((activity) => activity.id).join(",");
+      const activityNames = activities.length > 0 ? activities.map((activity) => activity.name).join(", ") : void 0;
+      const activityIdsStr = activities.length > 0 ? activities.map((activity) => activity.id).join(",") : void 0;
       const roundedTotal = roundedTotalInBack.toString();
       const stripePaymentIntent = await createStripePaymentIntent({
         total: roundedTotal,
@@ -2336,7 +2392,8 @@ var resolver = {
         paymentMethod,
         activityNames,
         activityIds: activityIdsStr,
-        lodgingId
+        lodgingId,
+        lodgingName: lodging?.name
       });
       paymentIntentId = stripePaymentIntent?.id;
       if (stripePaymentIntent?.error) {
@@ -2358,7 +2415,7 @@ var resolver = {
       let payment = await context.query.Payment.createOne({
         data: {
           paymentMethod: { connect: { id: paymentMethodId } },
-          activity: { connect: activities.map((activity) => ({ id: activity.id })) },
+          activity: activities.length > 0 ? { connect: activities.map((activity) => ({ id: activity.id })) } : void 0,
           lodging: lodging ? { connect: { id: lodging.id } } : void 0,
           user: { connect: { id: user.id } },
           amount: roundedTotal,
@@ -2375,7 +2432,7 @@ var resolver = {
           //end_date: undefined,
           guests_adults: Number(guestsCount),
           payment_type: paymentType,
-          activity: { connect: activities.map((activity) => ({ id: activity.id })) },
+          activity: activities.length > 0 ? { connect: activities.map((activity) => ({ id: activity.id })) } : void 0,
           lodging: lodging ? { connect: { id: lodging.id } } : void 0,
           location: { connect: { id: locationId } },
           user: { connect: { id: user.id } },
@@ -2636,7 +2693,7 @@ var {
   S3_SECRET_ACCESS_KEY: secretAccessKey = ""
 } = process.env;
 var keystone_default = withAuth(
-  (0, import_core21.config)({
+  (0, import_core22.config)({
     db: {
       provider: "postgresql",
       url: `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.POSTGRES_DB}`

@@ -14,6 +14,7 @@ import ActivityGallery from "./Activity/ActivityGallery";
 import LodgingGallery from "./Lodging/LodgingGallery";
 import LocationGallery from "./Location/LocationGallery";
 import LodgingInclude from "./Lodging/LodgingInclude";
+import LodgingAvailableDay from "./Lodging/LodgingAvailableDay";
 import Payment from "./Payment/Payment";
 import PaymentMethod from "./Payment/PaymentMethod";
 import Role from "./Role/Role";
@@ -34,6 +35,7 @@ export default {
   LodgingType,
   LodgingGallery,
   LodgingInclude,
+  LodgingAvailableDay,
   Payment,
   PaymentMethod,
   Review,

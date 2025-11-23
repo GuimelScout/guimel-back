@@ -165,34 +165,36 @@ model LocationService {
 }
 
 model Lodging {
-  id               String           @id @default(cuid())
-  name             String           @default("")
-  description      String           @default("")
-  price            Decimal?         @postgresql.Decimal(18, 4)
-  commission_type  String           @default("percentage")
-  commission_value Decimal          @postgresql.Decimal(18, 4)
+  id               String                @id @default(cuid())
+  name             String                @default("")
+  description      String                @default("")
+  price            Decimal?              @postgresql.Decimal(18, 4)
+  commission_type  String                @default("percentage")
+  commission_value Decimal               @postgresql.Decimal(18, 4)
+  type_day         String?               @default("any_day")
+  available_days   LodgingAvailableDay[] @relation("LodgingAvailableDay_lodging")
   status           String
   type             String
-  address          String           @default("")
-  lat              String           @default("")
-  lng              String           @default("")
-  hostBy           User?            @relation("Lodging_hostBy", fields: [hostById], references: [id])
-  hostById         String?          @map("hostBy")
-  lodgingType      LodgingType[]    @relation("LodgingType_lodging")
-  activity         Activity[]       @relation("Activity_lodging")
-  payment          Payment[]        @relation("Payment_lodging")
-  booking          Booking[]        @relation("Booking_lodging")
-  review           Review[]         @relation("Review_lodging")
-  location         Location[]       @relation("Location_lodging")
-  link             String           @unique @default("")
-  gallery          LodgingGallery[] @relation("Lodging_gallery")
-  includes         LodgingInclude[] @relation("Lodging_includes")
+  address          String                @default("")
+  lat              String                @default("")
+  lng              String                @default("")
+  hostBy           User?                 @relation("Lodging_hostBy", fields: [hostById], references: [id])
+  hostById         String?               @map("hostBy")
+  lodgingType      LodgingType[]         @relation("LodgingType_lodging")
+  activity         Activity[]            @relation("Activity_lodging")
+  payment          Payment[]             @relation("Payment_lodging")
+  booking          Booking[]             @relation("Booking_lodging")
+  review           Review[]              @relation("Review_lodging")
+  location         Location[]            @relation("Location_lodging")
+  link             String                @unique @default("")
+  gallery          LodgingGallery[]      @relation("Lodging_gallery")
+  includes         LodgingInclude[]      @relation("Lodging_includes")
   logo_id          String?
   logo_filesize    Int?
   logo_width       Int?
   logo_height      Int?
   logo_extension   String?
-  createdAt        DateTime?        @default(now())
+  createdAt        DateTime?             @default(now())
 
   @@index([hostById])
 }
@@ -227,6 +229,16 @@ model LodgingInclude {
   description String    @default("")
   lodging     Lodging[] @relation("Lodging_includes")
   createdAt   DateTime? @default(now())
+}
+
+model LodgingAvailableDay {
+  id        String    @id @default(cuid())
+  day       DateTime? @postgresql.Date
+  lodging   Lodging?  @relation("LodgingAvailableDay_lodging", fields: [lodgingId], references: [id])
+  lodgingId String?   @map("lodging")
+  createdAt DateTime? @default(now())
+
+  @@index([lodgingId])
 }
 
 model Payment {
