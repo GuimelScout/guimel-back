@@ -1,6 +1,6 @@
 import { KeystoneContext } from "@keystone-6/core/types";
 import Stripe from "../../integrations/stripe";
-import { calculatePaymentBreakdownWithGuests } from "../../utils/helpers/priceCalculation";
+import { Activity, calculatePaymentBreakdownWithGuests, calculateTotalWithCommissions, Lodging } from "../../utils/helpers/priceCalculation";
 import { getBookingCode } from "../../utils/helpers/bookingCode";
 
 const typeDefs = `
@@ -43,9 +43,6 @@ type PaymentInput = {
 };
 
 function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType }: PaymentInput) {
-  if (!activityIds || !Array.isArray(activityIds) || activityIds.length === 0) {
-    throw new Error("At least one activity must be selected.");
-  }
   if (!locationId) throw new Error("Location is required.");
   if (!startDate) throw new Error("Start date is required.");
   if (!guestsCount || isNaN(Number(guestsCount)) || Number(guestsCount) <= 0) throw new Error("Number of guests must be greater than 0.");
@@ -58,84 +55,38 @@ function validatePaymentInput({ activityIds, lodgingId, locationId, startDate, g
   }
 }
 
-type Activity = { 
-  id: string; 
-  name: string; 
-  price: string; 
-  commission_type: string; 
-  commission_value: string; 
-};
-type Lodging = { 
-  id: string; 
-  name: string; 
-  price: string; 
-  commission_type: string; 
-  commission_value: string; 
-} | undefined;
 
-function calculateTotalWithCommissions(
-  activities: Activity[], 
-  lodging: Lodging, 
-  guestsCount: string, 
-  paymentType: string
-): number {
-  let total = 0;
-  const guests = Number(guestsCount);
-  
-  // Calculate activities total
-  activities.forEach((activity: Activity, index: number) => {
-    const breakdown = calculatePaymentBreakdownWithGuests(
-      activity.price,
-      activity.commission_type,
-      activity.commission_value,
-      paymentType,
-      guests
-    );
-    
-    total += breakdown.payNow;
-  });
-  
-  // Calculate lodging total
-  if (lodging) {
-    const breakdown = calculatePaymentBreakdownWithGuests(
-      lodging.price,
-      lodging.commission_type,
-      lodging.commission_value,
-      paymentType,
-      guests
-    );
-    
-    total += breakdown.payNow;
-  }
-  
-  return total;
-}
+
+
 
 type StripePaymentIntentParams = {
   total: string;
   user: { stripeCustomerId: string };
   paymentMethod: { stripePaymentMethodId: string; id: string };
-  activityNames: string;
-  activityIds: string;
+  activityNames: string | undefined;
+  activityIds: string | undefined;
   lodgingId?: string;
+  lodgingName?: string;
 };
 
-async function createStripePaymentIntent({ total, user, paymentMethod, activityNames, activityIds, lodgingId }: StripePaymentIntentParams) {
+async function createStripePaymentIntent({ total, user, paymentMethod, activityNames, activityIds, lodgingId, lodgingName }: StripePaymentIntentParams) {
   // Convert to cents and round to avoid floating point issues
   const amountInCents = Math.round(Number(total) * 100);
-  
+
+  const description = activityNames ? `Payment for activities: ${activityNames} (${activityIds})` : `Payment for lodging: ${lodgingName || 'N/A'}`;
+
   try {
     const paymentIntent = await Stripe.paymentIntents.create({
       amount: amountInCents,
       currency: "mxn",
       customer: user.stripeCustomerId,
       payment_method: paymentMethod.stripePaymentMethodId,
-      description: `Payment for activities: ${activityNames} (${activityIds})`,
+      description: description,
       confirm: false, // Don't confirm immediately, keep in processing state
       metadata: {
         paymentMethod: paymentMethod.id,
-        activityIds: activityIds,
-        lodgingId: lodgingId,
+        activityIds: activityIds || '',
+        lodgingId: lodgingId || '',
       }
     });
     
@@ -174,11 +125,15 @@ const resolver = {
       validatePaymentInput({ activityIds, lodgingId, locationId, startDate, guestsCount, nameCard, email, paymentMethodId, total, paymentType });
 
       // Find activities with commission data
-      const activities = (await context.query.Activity.findMany({
-        where: { id: { in: activityIds } },
-        query: "id name price commission_type commission_value"
-      })) as Activity[];
-      if (!activities || activities.length === 0) throw new Error("No valid activities found.");
+      let activities: Activity[] = [];
+      if (activityIds.length > 0) {
+        const acts = (await context.query.Activity.findMany({
+          where: { id: { in: activityIds } },
+          query: "id name price commission_type commission_value"
+        })) as Activity[];
+        activities = acts;
+        if (!activities || activities.length === 0) throw new Error("No valid activities found.");
+      }
 
       // Find lodging if applicable with commission data
       let lodging: Lodging = undefined;
@@ -190,14 +145,18 @@ const resolver = {
         if (!lodging) throw new Error("Selected lodging not found.");
       }
       
+      
       const totalInBack = calculateTotalWithCommissions(activities, lodging, guestsCount, paymentType);
 
       const roundedTotalInBack = parseFloat(totalInBack.toFixed(2));
       const roundedFrontendTotal = parseFloat(Number(total).toFixed(2));
+      const difference = Math.abs(roundedFrontendTotal - roundedTotalInBack);
       
-      if (roundedFrontendTotal !== roundedTotalInBack) {
+      // Use a small tolerance (0.01) to account for floating point precision issues
+      // This allows for differences up to 1 cent due to rounding in intermediate calculations
+      if (difference > 0.01) {
         return {
-          message: `Communication error, please reload the page and try again.`,
+          message: `Communication error, please reload the page and try again. Total mismatch: Frontend=${roundedFrontendTotal}, Backend=${roundedTotalInBack}, Difference=${difference}`,
           success: false,
         };
       }
@@ -240,8 +199,8 @@ const resolver = {
         });
       }
 
-      const activityNames = activities.map(activity => activity.name).join(", ");
-      const activityIdsStr = activities.map(activity => activity.id).join(",");
+      const activityNames = activities.length > 0 ? activities.map(activity => activity.name).join(", ") : undefined;
+      const activityIdsStr = activities.length > 0 ? activities.map(activity => activity.id).join(",") : undefined;
 
       const roundedTotal = roundedTotalInBack.toString();
       
@@ -251,7 +210,8 @@ const resolver = {
         paymentMethod,
         activityNames,
         activityIds: activityIdsStr,
-        lodgingId
+        lodgingId,
+        lodgingName: lodging?.name
       });
           
       paymentIntentId = stripePaymentIntent?.id;
@@ -276,7 +236,7 @@ const resolver = {
       let payment = await context.query.Payment.createOne({
         data: {
           paymentMethod: { connect: { id: paymentMethodId } },
-          activity: { connect: activities.map(activity => ({ id: activity.id })) },
+          activity: activities.length > 0 ? { connect: activities.map(activity => ({ id: activity.id })) } : undefined,
           lodging: lodging ? { connect: { id: lodging.id } } : undefined,
           user: { connect: { id: user.id } },
           amount: roundedTotal,
@@ -296,7 +256,7 @@ const resolver = {
           //end_date: undefined,
           guests_adults: Number(guestsCount),
           payment_type: paymentType,
-          activity: { connect: activities.map(activity => ({ id: activity.id })) },
+          activity: activities.length > 0 ? { connect: activities.map(activity => ({ id: activity.id })) } : undefined,
           lodging: lodging ? { connect: { id: lodging.id } } : undefined,
           location: { connect: { id: locationId } },
           user: { connect: { id: user.id } },

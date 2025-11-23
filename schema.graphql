@@ -1166,6 +1166,9 @@ type Lodging {
   commission_type: String
   commission_value: Decimal
   total_price: Float
+  type_day: String
+  available_days(where: LodgingAvailableDayWhereInput! = {}, orderBy: [LodgingAvailableDayOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LodgingAvailableDayWhereUniqueInput): [LodgingAvailableDay!]
+  available_daysCount(where: LodgingAvailableDayWhereInput! = {}): Int
   status: String
   type: String
   address: String
@@ -1209,6 +1212,8 @@ input LodgingWhereInput {
   price: DecimalNullableFilter
   commission_type: StringFilter
   commission_value: DecimalFilter
+  type_day: StringNullableFilter
+  available_days: LodgingAvailableDayManyRelationFilter
   status: StringFilter
   type: StringFilter
   address: StringFilter
@@ -1225,6 +1230,12 @@ input LodgingWhereInput {
   gallery: LodgingGalleryManyRelationFilter
   includes: LodgingIncludeManyRelationFilter
   createdAt: DateTimeNullableFilter
+}
+
+input LodgingAvailableDayManyRelationFilter {
+  every: LodgingAvailableDayWhereInput
+  some: LodgingAvailableDayWhereInput
+  none: LodgingAvailableDayWhereInput
 }
 
 input LodgingTypeManyRelationFilter {
@@ -1252,6 +1263,7 @@ input LodgingOrderByInput {
   price: OrderDirection
   commission_type: OrderDirection
   commission_value: OrderDirection
+  type_day: OrderDirection
   status: OrderDirection
   type: OrderDirection
   address: OrderDirection
@@ -1267,6 +1279,8 @@ input LodgingUpdateInput {
   price: Decimal
   commission_type: String
   commission_value: Decimal
+  type_day: String
+  available_days: LodgingAvailableDayRelateToManyForUpdateInput
   status: String
   type: String
   address: String
@@ -1284,6 +1298,13 @@ input LodgingUpdateInput {
   includes: LodgingIncludeRelateToManyForUpdateInput
   logo: ImageFieldInput
   createdAt: DateTime
+}
+
+input LodgingAvailableDayRelateToManyForUpdateInput {
+  disconnect: [LodgingAvailableDayWhereUniqueInput!]
+  set: [LodgingAvailableDayWhereUniqueInput!]
+  create: [LodgingAvailableDayCreateInput!]
+  connect: [LodgingAvailableDayWhereUniqueInput!]
 }
 
 input LodgingTypeRelateToManyForUpdateInput {
@@ -1318,6 +1339,8 @@ input LodgingCreateInput {
   price: Decimal
   commission_type: String
   commission_value: Decimal
+  type_day: String
+  available_days: LodgingAvailableDayRelateToManyForCreateInput
   status: String
   type: String
   address: String
@@ -1335,6 +1358,11 @@ input LodgingCreateInput {
   includes: LodgingIncludeRelateToManyForCreateInput
   logo: ImageFieldInput
   createdAt: DateTime
+}
+
+input LodgingAvailableDayRelateToManyForCreateInput {
+  create: [LodgingAvailableDayCreateInput!]
+  connect: [LodgingAvailableDayWhereUniqueInput!]
 }
 
 input LodgingTypeRelateToManyForCreateInput {
@@ -1501,6 +1529,50 @@ input LodgingIncludeCreateInput {
   name: String
   description: String
   lodging: LodgingRelateToManyForCreateInput
+  createdAt: DateTime
+}
+
+type LodgingAvailableDay {
+  id: ID!
+  day: CalendarDay
+  lodging: Lodging
+  createdAt: DateTime
+}
+
+input LodgingAvailableDayWhereUniqueInput {
+  id: ID
+}
+
+input LodgingAvailableDayWhereInput {
+  AND: [LodgingAvailableDayWhereInput!]
+  OR: [LodgingAvailableDayWhereInput!]
+  NOT: [LodgingAvailableDayWhereInput!]
+  id: IDFilter
+  day: CalendarDayNullableFilter
+  lodging: LodgingWhereInput
+  createdAt: DateTimeNullableFilter
+}
+
+input LodgingAvailableDayOrderByInput {
+  id: OrderDirection
+  day: OrderDirection
+  createdAt: OrderDirection
+}
+
+input LodgingAvailableDayUpdateInput {
+  day: CalendarDay
+  lodging: LodgingRelateToOneForUpdateInput
+  createdAt: DateTime
+}
+
+input LodgingAvailableDayUpdateArgs {
+  where: LodgingAvailableDayWhereUniqueInput!
+  data: LodgingAvailableDayUpdateInput!
+}
+
+input LodgingAvailableDayCreateInput {
+  day: CalendarDay
+  lodging: LodgingRelateToOneForCreateInput
   createdAt: DateTime
 }
 
@@ -2232,6 +2304,12 @@ type Mutation {
   updateLodgingIncludes(data: [LodgingIncludeUpdateArgs!]!): [LodgingInclude]
   deleteLodgingInclude(where: LodgingIncludeWhereUniqueInput!): LodgingInclude
   deleteLodgingIncludes(where: [LodgingIncludeWhereUniqueInput!]!): [LodgingInclude]
+  createLodgingAvailableDay(data: LodgingAvailableDayCreateInput!): LodgingAvailableDay
+  createLodgingAvailableDays(data: [LodgingAvailableDayCreateInput!]!): [LodgingAvailableDay]
+  updateLodgingAvailableDay(where: LodgingAvailableDayWhereUniqueInput!, data: LodgingAvailableDayUpdateInput!): LodgingAvailableDay
+  updateLodgingAvailableDays(data: [LodgingAvailableDayUpdateArgs!]!): [LodgingAvailableDay]
+  deleteLodgingAvailableDay(where: LodgingAvailableDayWhereUniqueInput!): LodgingAvailableDay
+  deleteLodgingAvailableDays(where: [LodgingAvailableDayWhereUniqueInput!]!): [LodgingAvailableDay]
   createPayment(data: PaymentCreateInput!): Payment
   createPayments(data: [PaymentCreateInput!]!): [Payment]
   updatePayment(where: PaymentWhereUniqueInput!, data: PaymentUpdateInput!): Payment
@@ -2336,6 +2414,9 @@ type Query {
   lodgingInclude(where: LodgingIncludeWhereUniqueInput!): LodgingInclude
   lodgingIncludes(where: LodgingIncludeWhereInput! = {}, orderBy: [LodgingIncludeOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LodgingIncludeWhereUniqueInput): [LodgingInclude!]
   lodgingIncludesCount(where: LodgingIncludeWhereInput! = {}): Int
+  lodgingAvailableDay(where: LodgingAvailableDayWhereUniqueInput!): LodgingAvailableDay
+  lodgingAvailableDays(where: LodgingAvailableDayWhereInput! = {}, orderBy: [LodgingAvailableDayOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LodgingAvailableDayWhereUniqueInput): [LodgingAvailableDay!]
+  lodgingAvailableDaysCount(where: LodgingAvailableDayWhereInput! = {}): Int
   payment(where: PaymentWhereUniqueInput!): Payment
   payments(where: PaymentWhereInput! = {}, orderBy: [PaymentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PaymentWhereUniqueInput): [Payment!]
   paymentsCount(where: PaymentWhereInput! = {}): Int

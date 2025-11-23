@@ -33,6 +33,27 @@ export default list({
         },
       }),
     }),
+    type_day: select({
+      options: [
+        { label: "Un día", value: 'one_day' },
+        { label: "Cualquier día", value: 'any_day' },
+        { label: "Solo entre semana", value: 'weekdays' },
+        { label: "Solo fines de semana", value: 'weekends' },
+        { label: "Rango de fechas", value: 'date_range' },
+        { label: "Algunos días", value: 'some_days' }, // when user select some_days, AvailableDays save the info
+      ],
+      defaultValue: 'any_day',
+      ui: {
+       description: "Select the type of day the lodging is available. If you select 'some_days', you must select the days in the AvailableDays section.",
+      },
+    }),
+    available_days: relationship({
+      ref: "LodgingAvailableDay.lodging",
+      many: true,
+      ui: {
+        description: "Select the days the lodging is available only if you select 'some_days' in the Type day section.",
+      },
+    }),
     status: select({
           options: [
             { label: "Disponible", value: 'available' },
